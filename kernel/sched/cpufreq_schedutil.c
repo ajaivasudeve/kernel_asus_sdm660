@@ -28,7 +28,6 @@ unsigned long boosted_cpu_util(int cpu);
 #define cpufreq_enable_fast_switch(x)
 #define cpufreq_disable_fast_switch(x)
 #define LATENCY_MULTIPLIER			(1000)
-#define SUGOV_KTHREAD_PRIORITY	50
 #define SB_SAMPLE_SIZE 20
 #define MIN_LOG_INTERVAL 50
 
