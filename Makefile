@@ -663,7 +663,7 @@ KBUILD_CFLAGS	+= -Werror
 endif
 
 ifeq ($(cc-name),gcc)
-KBUILD_CFLAGS	+= -Wno-psabi
+KBUILD_CFLAGS	+= -Wno-psabi -mcpu=cortex-a73.cortex-a53 -mtune=cortex-a73.cortex-a53
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
