@@ -1322,10 +1322,10 @@ static void mdss_dsi_phy_regulator_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 				break;
 			default:
 				/*
-				 * For dual dsi case, do not reconfigure dsi phy
-				 * regulator if the other dsi controller is still
-				 * active.
-				 */
+				* For dual dsi case, do not reconfigure dsi phy
+				* regulator if the other dsi controller is still
+				* active.
+				*/
 				if (!mdss_dsi_is_hw_config_dual(sdata) ||
 					(other_ctrl && (!other_ctrl->is_phyreg_enabled
 							|| other_ctrl->mmss_clamp)))
