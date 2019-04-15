@@ -53,8 +53,8 @@ static long audio_ioctl_shared(struct file *file, unsigned int cmd,
 	struct q6audio_aio *audio = file->private_data;
 	int rc = 0;
 
-	switch (cmd) {
-	case AUDIO_START:
+	switch (cmd)
+	case AUDIO_START: {
 		pr_err("%s[%pK]: AUDIO_START session_id[%d]\n", __func__,
 			audio, audio->ac->session);
 		if (audio->feedback == NON_TUNNEL_MODE) {
