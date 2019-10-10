@@ -2485,7 +2485,7 @@ static void adreno_dispatcher_work(struct adreno_device *adreno_dev)
 static int adreno_dispatcher_thread(void *data)
 {
 	static const struct sched_param sched_rt_prio = {
-		.sched_priority = 16
+		.sched_priority = MAX_RT_PRIO / 2
 	};
 	struct adreno_device *adreno_dev = data;
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
