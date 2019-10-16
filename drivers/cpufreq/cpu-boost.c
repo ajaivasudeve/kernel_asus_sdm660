@@ -40,7 +40,6 @@ module_param(input_boost_ms, uint, 0644);
 
 static struct delayed_work input_boost_rem;
 static u64 last_input_time;
-#define MIN_INPUT_INTERVAL (150 * USEC_PER_MSEC)
 
 static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
 {
@@ -204,20 +203,14 @@ static void do_input_boost(struct work_struct *work)
 static void cpuboost_input_event(struct input_handle *handle,
 		unsigned int type, unsigned int code, int value)
 {
-	u64 now;
-
 	if (!input_boost_enabled)
-		return;
-
-	now = ktime_to_us(ktime_get());
-	if (now - last_input_time < MIN_INPUT_INTERVAL)
 		return;
 
 	if (work_pending(&input_boost_work))
 		return;
 
 	queue_work(cpu_boost_wq, &input_boost_work);
-	last_input_time = ktime_to_us(ktime_get());
+	last_input_time = jiffies;
 }
 
 static int cpuboost_input_connect(struct input_handler *handler,
