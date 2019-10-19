@@ -254,7 +254,7 @@ static void do_input_boost(struct work_struct *work)
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
 
-	if (max_boost_active) {
+	if (max_boost_active || input_boost_ms < 1) {
 		return;
 	}
 
