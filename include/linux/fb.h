@@ -22,6 +22,8 @@ struct file;
 struct videomode;
 struct device_node;
 
+extern bool display_on;
+
 /* Definitions below are used in the parsed monitor specs */
 #define FB_DPMS_ACTIVE_OFF	1
 #define FB_DPMS_SUSPEND		2

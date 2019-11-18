@@ -32,6 +32,8 @@
 #include "mdss_panel.h"
 #include "mdss_mdp.h"
 
+bool display_on = true;
+
 #ifdef CONFIG_MACH_ZUK_Z2_ROW
 #define STATUS_CHECK_INTERVAL_MS 2000
 #else
@@ -206,8 +208,11 @@ static int fb_event_callback(struct notifier_block *self,
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
 			schedule_delayed_work(&pdata->check_status,
 				msecs_to_jiffies(interval));
+			display_on = true;
 			break;
 		case FB_BLANK_POWERDOWN:
+			display_on = false;
+			break;
 		case FB_BLANK_HSYNC_SUSPEND:
 		case FB_BLANK_VSYNC_SUSPEND:
 		case FB_BLANK_NORMAL:
