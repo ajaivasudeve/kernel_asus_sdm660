@@ -32,6 +32,7 @@
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_bw_hwmon.h"
+#include <linux/fb.h>
 
 #define NUM_MBPS_ZONES		10
 struct hwmon_node {
@@ -52,6 +53,7 @@ struct hwmon_node {
 	unsigned int low_power_io_percent;
 	unsigned int low_power_delay;
 	unsigned int mbps_zones[NUM_MBPS_ZONES];
+	unsigned int screen_off_max_freq;
 
 	unsigned long prev_ab;
 	unsigned long *dev_ab;
@@ -317,7 +319,7 @@ static unsigned long get_bw_and_set_irq(struct hwmon_node *node,
 	unsigned long meas_mbps_zone;
 	unsigned long hist_lo_tol, hyst_lo_tol;
 	struct bw_hwmon *hw = node->hw;
-	unsigned int new_bw, io_percent;
+	unsigned int new_bw, io_percent, og_freq;
 	ktime_t ts;
 	unsigned int ms = 0;
 
@@ -485,6 +487,16 @@ static unsigned long get_bw_and_set_irq(struct hwmon_node *node,
 		*ab = roundup(new_bw, node->bw_step);
 
 	*freq = (new_bw * 100) / io_percent;
+	og_freq = *freq;
+
+	if (!display_on && *freq > node->screen_off_max_freq) {
+		*freq = node->screen_off_max_freq;
+	} 
+
+	if (*freq == 0) {
+		*freq = og_freq;
+	}
+
 	trace_bw_hwmon_update(dev_name(node->hw->df->dev.parent),
 				new_bw,
 				*freq,
@@ -790,6 +802,7 @@ gov_attr(low_power_ceil_mbps, 0U, 2500U);
 gov_attr(low_power_io_percent, 1U, 100U);
 gov_attr(low_power_delay, 1U, 60U);
 gov_list_attr(mbps_zones, NUM_MBPS_ZONES, 0U, UINT_MAX);
+gov_attr(screen_off_max_freq, 0U, UINT_MAX);
 
 static struct attribute *dev_attr[] = {
 	&dev_attr_guard_band_mbps.attr,
@@ -810,6 +823,7 @@ static struct attribute *dev_attr[] = {
 	&dev_attr_low_power_delay.attr,
 	&dev_attr_mbps_zones.attr,
 	&dev_attr_throttle_adj.attr,
+	&dev_attr_screen_off_max_freq.attr,
 	NULL,
 };
 
@@ -954,6 +968,7 @@ int register_bw_hwmon(struct device *dev, struct bw_hwmon *hwmon)
 	node->hyst_length = 0;
 	node->idle_mbps = 400;
 	node->mbps_zones[0] = 0;
+	node->screen_off_max_freq = 13763;
 	node->hw = hwmon;
 
 	mutex_lock(&list_lock);

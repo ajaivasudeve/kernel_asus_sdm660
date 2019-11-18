@@ -155,6 +155,7 @@ on enable-low-power
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/guard_band_mbps 0
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/up_scale 250
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/idle_mbps 1600
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/screen_off_max_freq 13763
 
     write /sys/class/devfreq/soc:qcom,memlat-cpu0/governor "mem_latency"
     write /sys/class/devfreq/soc:qcom,memlat-cpu0/polling_interval 10
