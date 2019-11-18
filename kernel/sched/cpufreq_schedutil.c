@@ -19,6 +19,7 @@
 
 #include "sched.h"
 #include "tune.h"
+#include <linux/fb.h>
 
 unsigned long boosted_cpu_util(int cpu);
 
@@ -37,6 +38,7 @@ struct sugov_tunables {
 	unsigned int down_rate_limit_us;
 	bool iowait_boost_enable;
 	bool alt_freq_eq;
+	unsigned int screen_off_max_freq;
 };
 
 struct sugov_policy {
@@ -311,12 +313,24 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
-	log_load(util, max);			
+	unsigned int og_freq;			
 
+	log_load(util, max);			
+				
 	if (!sg_policy->tunables->alt_freq_eq)
 		freq = (freq + (freq >> 2)) * util / max;
 	else
 		freq = freq * util / max;
+
+	og_freq = freq;
+
+	if (!display_on && freq > sg_policy->tunables->screen_off_max_freq) {
+		freq = sg_policy->tunables->screen_off_max_freq;
+	}
+
+	if (freq == 0) {
+		freq = og_freq;
+	}
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
@@ -729,16 +743,38 @@ static ssize_t alt_freq_eq_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t screen_off_max_freq_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->screen_off_max_freq);
+}
+
+static ssize_t screen_off_max_freq_store(struct gov_attr_set *attr_set,
+					const char *buf, size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	tunables->screen_off_max_freq = val;
+	return count;
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
 static struct governor_attr alt_freq_eq = __ATTR_RW(alt_freq_eq);
+static struct governor_attr screen_off_max_freq = __ATTR_RW(screen_off_max_freq);
 
 static struct attribute *sugov_attributes[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
 	&iowait_boost_enable.attr,
 	&alt_freq_eq.attr,
+	&screen_off_max_freq.attr,
 	NULL
 };
 
@@ -856,6 +892,7 @@ static void sugov_tunables_save(struct cpufreq_policy *policy,
 	cached->down_rate_limit_us = tunables->down_rate_limit_us;
 	cached->iowait_boost_enable = tunables->iowait_boost_enable;
 	cached->alt_freq_eq = tunables->alt_freq_eq;
+	cached->screen_off_max_freq = tunables->screen_off_max_freq;
 }
 
 static void sugov_tunables_free(struct sugov_tunables *tunables)
@@ -879,6 +916,7 @@ static void sugov_tunables_restore(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = cached->down_rate_limit_us;
 	tunables->iowait_boost_enable = cached->iowait_boost_enable;
 	tunables->alt_freq_eq = cached->alt_freq_eq;
+	tunables->screen_off_max_freq = cached->screen_off_max_freq;
 	sg_policy->up_rate_delay_ns =
 		tunables->up_rate_limit_us * NSEC_PER_USEC;
 	sg_policy->down_rate_delay_ns =
