@@ -116,3 +116,9 @@ all.config
 
 # fetched Android config fragments
 android/configs/android-*.cfg
+
+# ignore out folder
+out
+
+# ignore image file
+flasher/Image.gz-dtb
