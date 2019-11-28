@@ -34,7 +34,10 @@ static struct workqueue_struct *cpu_boost_wq;
 
 static struct work_struct input_boost_work;
 static bool input_boost_enabled;
+static bool max_boost_active = false;
 
+static unsigned int max_boost_enabled = 1;
+module_param(max_boost_enabled, uint, 0644);
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
 
@@ -131,7 +134,8 @@ static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
 	case CPUFREQ_ADJUST:
 		if (!ib_min)
 			break;
-		ib_min = min(ib_min, policy->max);
+		ib_min = min((s->input_boost_min == UINT_MAX ?
+				policy->max : s->input_boost_min), policy->max);
 
 		pr_debug("CPU%u policy min before boost: %u kHz\n",
 			 cpu, policy->min);
@@ -178,12 +182,20 @@ static void do_input_boost_rem(struct work_struct *work)
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
+
+	if (max_boost_active) {
+		max_boost_active = false;
+	}
 }
 
 static void do_input_boost(struct work_struct *work)
 {
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
+
+	if (max_boost_active) {
+		return;
+	}
 
 	cancel_delayed_work_sync(&input_boost_rem);
 
@@ -199,6 +211,34 @@ static void do_input_boost(struct work_struct *work)
 
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
+}
+
+static void do_input_boost_max(unsigned int duration_ms)
+{
+	unsigned int i;
+	struct cpu_sync *i_sync_info;
+	cancel_delayed_work_sync(&input_boost_rem);
+
+	for_each_possible_cpu(i) {
+		i_sync_info = &per_cpu(sync_info, i);
+		i_sync_info->input_boost_min = UINT_MAX;
+	}
+
+	update_policy_online();
+
+	queue_delayed_work(cpu_boost_wq,
+		&input_boost_rem, msecs_to_jiffies(duration_ms));
+
+	max_boost_active = true;
+}
+
+void input_boost_max_kick(unsigned int duration_ms) 
+{
+	if (max_boost_enabled < 1) {
+		return;
+	}
+	
+	do_input_boost_max(duration_ms);
 }
 
 static void cpuboost_input_event(struct input_handle *handle,
