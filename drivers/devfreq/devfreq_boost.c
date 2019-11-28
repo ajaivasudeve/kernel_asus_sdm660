@@ -8,6 +8,8 @@
 #include <linux/devfreq_boost.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include <linux/moduleparam.h>
+#include <linux/cpu_boost.h>
 
 struct boost_dev {
 	struct workqueue_struct *wq;
@@ -28,6 +30,9 @@ struct df_boost_drv {
 	struct boost_dev devices[DEVFREQ_MAX];
 	struct notifier_block fb_notif;
 };
+
+static unsigned int mdss_timeout = 5000;
+module_param(mdss_timeout, uint, 0644);
 
 static struct df_boost_drv *df_boost_drv_g __read_mostly;
 
@@ -50,6 +55,16 @@ void devfreq_boost_kick(enum df_device device)
 	struct df_boost_drv *d = df_boost_drv_g;
 
 	if (!d)
+		return;
+
+	__devfreq_boost_kick(d->devices + device);
+}
+
+void devfreq_mdss_boost_kick(enum df_device device)
+{
+	struct df_boost_drv *d = df_boost_drv_g;
+
+	if (!d || time_after(jiffies, last_input_time + msecs_to_jiffies(mdss_timeout)))
 		return;
 
 	__devfreq_boost_kick(d->devices + device);
