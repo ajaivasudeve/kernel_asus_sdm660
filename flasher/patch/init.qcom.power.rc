@@ -114,8 +114,24 @@ on enable-low-power
     write /sys/module/msm_thermal/parameters/enabled 1
 
     # input boost config
-    write /sys/module/cpu_boost/parameters/input_boost_freq "0:0 1:0 2:0 3:0"
-    write /sys/module/cpu_boost/parameters/input_boost_ms 0
+    write /sys/module/cpu_boost/parameters/input_boost_enabled 1
+    write /sys/module/cpu_boost/parameters/smart_boost_enabled 1
+    write /sys/module/cpu_boost/parameters/sb_damp_factor 10
+    write /sys/module/cpu_boost/parameters/dsb_enabled 1
+    write /sys/module/cpu_boost/parameters/max_boost_enabled 1
+    write /sys/module/cpu_boost/parameters/mdss_boost_enabled 1
+    write /sys/module/cpu_boost/parameters/input_boost_freq_l 652800
+    write /sys/module/cpu_boost/parameters/input_boost_freq_b 652800
+    write /sys/module/cpu_boost/parameters/input_boost_ms 850
+    write /sys/module/cpu_boost/parameters/dynamic_stune_boost_ta 1
+    write /sys/module/cpu_boost/parameters/dynamic_stune_boost_fg 0
+    write /sys/module/cpu_boost/parameters/dynamic_stune_boost_ms 850
+
+    # devfreq boost config
+    write /sys/module/devfreq_boost/parameters/input_boost_enabled 1
+    write /sys/module/devfreq_boost/parameters/max_boost_enabled 1
+    write /sys/module/devfreq_boost/parameters/mdss_boost_enabled 1
+    write /sys/module/devfreq_boost/parameters/mdss_timeout 5000
 
     # enable bus-dcvs
     write /sys/class/devfreq/soc:qcom,cpubw/governor "bw_hwmon"
@@ -123,9 +139,12 @@ on enable-low-power
     write /sys/class/devfreq/soc:qcom,cpubw/min_freq 762
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/mbps_zones "1525 5195 11863 13763"
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/sample_ms 4
-    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent 34
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent 85
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/decay_rate 100
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/bw_step 50
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/hist_memory 20
-    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_length 10
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_length 0
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/down_thres 85
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/low_power_ceil_mbps 0
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/low_power_io_percent 34
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/low_power_delay 20
@@ -135,8 +154,10 @@ on enable-low-power
 
     write /sys/class/devfreq/soc:qcom,memlat-cpu0/governor "mem_latency"
     write /sys/class/devfreq/soc:qcom,memlat-cpu0/polling_interval 10
+    write /sys/class/devfreq/soc:qcom,memlat-cpu0/ratio_ceil 400
     write /sys/class/devfreq/soc:qcom,memlat-cpu2/governor "mem_latency"
     write /sys/class/devfreq/soc:qcom,memlat-cpu2/polling_interval 10
+    write /sys/class/devfreq/soc:qcom,memlat-cpu2/ratio_ceil 400
     write /sys/class/devfreq/soc:qcom,mincpubw/governor "cpufreq"
 
     # enable all lpms (this will enable c4, d4, d3, e4 and m3 lpms)
