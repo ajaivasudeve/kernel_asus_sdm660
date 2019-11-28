@@ -33,6 +33,12 @@ struct df_boost_drv {
 
 static unsigned int mdss_timeout = 5000;
 module_param(mdss_timeout, uint, 0644);
+static unsigned int input_boost_enabled = 1;
+module_param(input_boost_enabled, uint, 0644);
+static unsigned int max_boost_enabled = 1;
+module_param(max_boost_enabled, uint, 0644);
+static unsigned int mdss_boost_enabled = 1;
+module_param(mdss_boost_enabled, uint, 0644);
 
 static struct df_boost_drv *df_boost_drv_g __read_mostly;
 
@@ -54,7 +60,7 @@ void devfreq_boost_kick(enum df_device device)
 {
 	struct df_boost_drv *d = df_boost_drv_g;
 
-	if (!d)
+	if (!d || input_boost_enabled < 1)
 		return;
 
 	__devfreq_boost_kick(d->devices + device);
@@ -64,7 +70,8 @@ void devfreq_mdss_boost_kick(enum df_device device)
 {
 	struct df_boost_drv *d = df_boost_drv_g;
 
-	if (!d || time_after(jiffies, last_input_time + msecs_to_jiffies(mdss_timeout)))
+	if (!d || mdss_boost_enabled < 1 ||
+		time_after(jiffies, last_input_time + msecs_to_jiffies(mdss_timeout)))
 		return;
 
 	__devfreq_boost_kick(d->devices + device);
@@ -97,7 +104,7 @@ void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms)
 {
 	struct df_boost_drv *d = df_boost_drv_g;
 
-	if (!d)
+	if (!d || max_boost_enabled < 1)
 		return;
 
 	__devfreq_boost_kick_max(d->devices + device, duration_ms);
