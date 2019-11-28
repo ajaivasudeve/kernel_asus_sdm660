@@ -39,8 +39,12 @@ static bool max_boost_active = false;
 
 static unsigned int max_boost_enabled = 1;
 module_param(max_boost_enabled, uint, 0644);
+static unsigned int mdss_boost_enabled = 1;
+module_param(mdss_boost_enabled, uint, 0644);
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
+static unsigned int mdss_timeout = 5000;
+module_param(mdss_timeout, uint, 0644);
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 static int dynamic_stune_boost_ta;
@@ -277,6 +281,16 @@ static void do_input_boost(struct work_struct *work)
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
 	do_dsb_kick();
+}
+
+void mdss_boost_kick()
+{
+	if (mdss_boost_enabled < 1 || work_pending(&input_boost_work)
+				|| time_after(jiffies, last_input_time + msecs_to_jiffies(mdss_timeout))) {
+		return;
+	}
+
+	queue_work(cpu_boost_wq, &input_boost_work);
 }
 
 static void do_input_boost_max(unsigned int duration_ms)
