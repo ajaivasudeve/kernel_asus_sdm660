@@ -3,6 +3,7 @@
 
 #ifdef CONFIG_CPU_BOOST
 void do_dsb_kick(void);
+extern unsigned long last_input_time;
 #else
 static inline void do_dsb_kick(void)
 {
