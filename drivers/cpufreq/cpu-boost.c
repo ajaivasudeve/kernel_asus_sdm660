@@ -264,6 +264,7 @@ static void do_input_boost(struct work_struct *work)
 
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
+	do_dsb_kick();
 }
 
 static void cpuboost_input_event(struct input_handle *handle,
