@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/time.h>
+#include <linux/cpu_boost.h>
 
 struct cpu_sync {
 	int cpu;
@@ -37,6 +38,21 @@ static bool input_boost_enabled;
 
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static int dynamic_stune_boost_ta;
+module_param(dynamic_stune_boost_ta, uint, 0644);
+static int dynamic_stune_boost_fg;
+module_param(dynamic_stune_boost_fg, uint, 0644);
+static unsigned int dynamic_stune_boost_ms;
+module_param(dynamic_stune_boost_ms, uint, 0644);
+static unsigned int dsb_enabled;
+module_param(dsb_enabled, uint, 0644);
+static bool stune_boost_active_ta;
+static bool stune_boost_active_fg;
+static int boost_slot;
+static struct delayed_work dynamic_stune_boost_rem;
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 static struct delayed_work input_boost_rem;
 static u64 last_input_time;
@@ -180,6 +196,55 @@ static void do_input_boost_rem(struct work_struct *work)
 	update_policy_online();
 }
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static void _do_dsb()
+{
+	int ret, err;
+
+	if (stune_boost_active_ta) {
+		reset_stune_boost("top-app", boost_slot);
+		stune_boost_active_ta = false;
+	}
+	if (stune_boost_active_fg) {
+		reset_stune_boost("foreground", boost_slot);
+		stune_boost_active_fg = false;
+	}
+	cancel_delayed_work_sync(&dynamic_stune_boost_rem);
+	
+	/* Set dynamic stune boost value */
+	ret = do_stune_boost("top-app", dynamic_stune_boost_ta, &boost_slot);
+	if (!ret)
+		stune_boost_active_ta = true;
+	ret = do_stune_boost("foreground", dynamic_stune_boost_fg, &boost_slot);
+	if (!err)
+		stune_boost_active_fg = true;
+
+	queue_delayed_work(cpu_boost_wq, &dynamic_stune_boost_rem,
+					msecs_to_jiffies(dynamic_stune_boost_ms));
+}
+
+void do_dsb_kick()
+{
+	if (dsb_enabled < 1) {
+		return;
+	}
+	_do_dsb();
+}
+
+static void do_dynamic_stune_boost_rem(struct work_struct *work)
+{
+	/* Reset dynamic stune boost value to the default value */
+	if (stune_boost_active_ta) {
+		reset_stune_boost("top-app", boost_slot);
+		stune_boost_active_ta = false;
+	}
+	if (stune_boost_active_fg) {
+		reset_stune_boost("foreground", boost_slot);
+		stune_boost_active_fg = false;
+	}
+}
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
 static void do_input_boost(struct work_struct *work)
 {
 	unsigned int i;
@@ -252,6 +317,13 @@ err2:
 
 static void cpuboost_input_disconnect(struct input_handle *handle)
 {
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	/* Reset dynamic stune boost value to the default value */
+	reset_stune_boost("top-app", boost_slot);
+	stune_boost_active_ta = false;
+	reset_stune_boost("foreground", boost_slot);
+	stune_boost_active_fg = false;
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */	
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);
@@ -302,6 +374,9 @@ static int cpu_boost_init(void)
 
 	INIT_WORK(&input_boost_work, do_input_boost);
 	INIT_DELAYED_WORK(&input_boost_rem, do_input_boost_rem);
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	INIT_DELAYED_WORK(&dynamic_stune_boost_rem, do_dynamic_stune_boost_rem);
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */	
 
 	for_each_possible_cpu(cpu) {
 		s = &per_cpu(sync_info, cpu);
