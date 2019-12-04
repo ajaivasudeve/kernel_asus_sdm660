@@ -27,7 +27,6 @@
 struct cpu_sync {
 	int cpu;
 	unsigned int input_boost_min;
-	unsigned int input_boost_freq;
 };
 
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
@@ -36,6 +35,10 @@ static struct workqueue_struct *cpu_boost_wq;
 static struct work_struct input_boost_work;
 static bool max_boost_active = false;
 
+static unsigned int input_boost_freq_b = 652800;
+module_param(input_boost_freq_b, uint, 0644);
+static unsigned int input_boost_freq_l = 652800;
+module_param(input_boost_freq_l, uint, 0644);
 static unsigned int input_boost_enabled = 1;
 module_param(input_boost_enabled, uint, 0644);
 static unsigned int max_boost_enabled = 1;
@@ -64,64 +67,6 @@ static struct delayed_work dynamic_stune_boost_rem;
 
 static struct delayed_work input_boost_rem;
 unsigned long last_input_time;
-
-static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
-{
-	int i, ntokens = 0;
-	unsigned int val, cpu;
-	const char *cp = buf;
-	
-	while ((cp = strpbrk(cp + 1, " :")))
-		ntokens++;
-
-	/* single number: apply to all CPUs */
-	if (!ntokens) {
-		if (sscanf(buf, "%u\n", &val) != 1)
-			return -EINVAL;
-		for_each_possible_cpu(i)
-			per_cpu(sync_info, i).input_boost_freq = val;
-		goto out;
-	}
-
-	/* CPU:value pair */
-	if (!(ntokens % 2))
-		return -EINVAL;
-
-	cp = buf;
-	for (i = 0; i < ntokens; i += 2) {
-		if (sscanf(cp, "%u:%u", &cpu, &val) != 2)
-			return -EINVAL;
-		if (cpu > num_possible_cpus())
-			return -EINVAL;
-
-		per_cpu(sync_info, cpu).input_boost_freq = val;
-		cp = strchr(cp, ' ');
-		cp++;
-	}
-
-out:
-	return 0;
-}
-
-static int get_input_boost_freq(char *buf, const struct kernel_param *kp)
-{
-	int cnt = 0, cpu;
-	struct cpu_sync *s;
-
-	for_each_possible_cpu(cpu) {
-		s = &per_cpu(sync_info, cpu);
-		cnt += snprintf(buf + cnt, PAGE_SIZE - cnt,
-				"%d:%u ", cpu, s->input_boost_freq);
-	}
-	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
-	return cnt;
-}
-
-static const struct kernel_param_ops param_ops_input_boost_freq = {
-	.set = set_input_boost_freq,
-	.get = get_input_boost_freq,
-};
-module_param_cb(input_boost_freq, &param_ops_input_boost_freq, NULL, 0644);
 
 /*
  * The CPUFREQ_ADJUST notifier is used to override the current policy min to
@@ -264,8 +209,12 @@ static void do_input_boost(struct work_struct *work)
 	pr_debug("Setting input boost min for all CPUs\n");
 	for_each_possible_cpu(i) {
 		i_sync_info = &per_cpu(sync_info, i);
-		i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
-	}
+			if (i < 2) {
+				i_sync_info->input_boost_min = input_boost_freq_l;
+			} else {
+				i_sync_info->input_boost_min = input_boost_freq_b;
+			}
+		}
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
