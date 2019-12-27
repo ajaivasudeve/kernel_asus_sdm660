@@ -1,9 +1,23 @@
 version: 2
 jobs:
-  build_zuk:
+  build_do:
     docker:
       - image: ubuntu:latest
-    working_directory: /root/build_zuk
+    environment:
+      weekly: false  
+    working_directory: /root/build_do
+    steps:
+      - run: apt-get update
+      - run: apt-get -y install git
+      - run: git clone https://github.com/ajaivasudeve/kernel --depth=1 -b zuk .
+      - run: bash build.sh
+
+  build_weekly:
+    docker:
+      - image: ubuntu:latest
+    environment:
+      weekly: true
+    working_directory: /root/build_weekly
     steps:
       - run: apt-get update
       - run: apt-get -y install git
@@ -12,13 +26,17 @@ jobs:
 
 workflows:
   version: 2
-  zuk_build:
+  do_build:
+    jobs:
+      - build_do
+
+  weekly_build:
     triggers:
       - schedule:
-          cron: "0 0 * * 0"
+          cron: "30 0 * * 0"
           filters:
             branches:
               only:
                 - zuk    
     jobs:
-      - build_zuk
+      - build_weekly

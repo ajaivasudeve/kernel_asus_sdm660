@@ -66,12 +66,16 @@ mkzip (){
 	zip -r "$zipname" *
 	mv -f "$zipname" $CIRCLE_WORKING_DIRECTORY
 	cd $CIRCLE_WORKING_DIRECTORY
-	tg_upload "$zipname" "${1}" "$duration"
+	if [ "$weekly" = true ]; then
+		tg_upload "$zipname" "${1}" "$duration" "$chat_id"
+	else
+		tg_upload "$zipname" "${1}" "$duration" "$chat_id_1"
+	fi		
 }
 
 tg_upload(){
    curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
-        -F chat_id="$chat_id" \
+        -F chat_id="${4}" \
         -F "disable_web_page_preview=true" \
         -F "parse_mode=HTML" \
         -F caption="
