@@ -245,11 +245,6 @@ get_smart_load (unsigned int min_load, unsigned int max_load,
 {
   int min_load_x = sb_damp_factor;
 
-  if (min_load_x == 0)
-    {
-      min_load_x = 1;
-    }
-
   smart_load =
     ((min_load * min_load_x) + avg_load + max_load) / (min_load_x + 2);
 
