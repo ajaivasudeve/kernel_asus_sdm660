@@ -35,7 +35,7 @@ static unsigned int mdss_timeout = 5000;
 module_param(mdss_timeout, uint, 0644);
 static unsigned int input_boost_enabled = 1;
 module_param(input_boost_enabled, uint, 0644);
-static unsigned int max_boost_enabled = 1;
+static unsigned int max_boost_enabled = 0;
 module_param(max_boost_enabled, uint, 0644);
 static unsigned int mdss_boost_enabled = 1;
 module_param(mdss_boost_enabled, uint, 0644);

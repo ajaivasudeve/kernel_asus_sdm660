@@ -122,7 +122,7 @@ on enable-low-power
     write /sys/module/cpu_boost/parameters/smart_boost_enabled 1
     write /sys/module/cpu_boost/parameters/sb_damp_factor 10
     write /sys/module/cpu_boost/parameters/dsb_enabled 1
-    write /sys/module/cpu_boost/parameters/max_boost_enabled 1
+    write /sys/module/cpu_boost/parameters/max_boost_enabled 0
     write /sys/module/cpu_boost/parameters/mdss_boost_enabled 1
     write /sys/module/cpu_boost/parameters/input_boost_freq_l 652800
     write /sys/module/cpu_boost/parameters/input_boost_freq_b 652800
@@ -133,7 +133,7 @@ on enable-low-power
 
     # devfreq boost config
     write /sys/module/devfreq_boost/parameters/input_boost_enabled 1
-    write /sys/module/devfreq_boost/parameters/max_boost_enabled 1
+    write /sys/module/devfreq_boost/parameters/max_boost_enabled 0
     write /sys/module/devfreq_boost/parameters/mdss_boost_enabled 1
     write /sys/module/devfreq_boost/parameters/mdss_timeout 5000
 
