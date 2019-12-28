@@ -68,13 +68,15 @@ mkzip (){
 	cd $CIRCLE_WORKING_DIRECTORY
 	if [ "$weekly" = true ]; then
 		tg_upload "$zipname" "${1}" "$duration" "$chat_id"
+		curl -X POST "https://$BB_AUTH_STRING@api.bitbucket.org/2.0/repositories/$BB_USER/$BB_REPO/downloads" --form files=@"$zipname"
 	else
 		tg_upload "$zipname" "${1}" "$duration" "$chat_id_1"
 	fi		
 }
 
 tg_upload(){
-   curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
+	if [ "$weekly" = true ]; then	
+   	curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
         -F chat_id="${4}" \
         -F "disable_web_page_preview=true" \
         -F "parse_mode=HTML" \
@@ -88,7 +90,26 @@ tg_upload(){
 <b>Build Duration:</b> 
 <code>${3}</code>
 <b>Last Commit:</b> 
-<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>"
+<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
+<b>Mirror Link:</b> 
+<a href='$MIRROR/${1}'>Download</a>"
+	else
+	curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
+        -F chat_id="${4}" \
+        -F "disable_web_page_preview=true" \
+        -F "parse_mode=HTML" \
+        -F caption="
+<b>Device:</b> 
+<code>${2}</code>
+<b>Build Type:</b>
+<code>$type</code>
+<b>Branch:</b> 
+<code>$CIRCLE_BRANCH</code>
+<b>Build Duration:</b> 
+<code>${3}</code>
+<b>Last Commit:</b> 
+<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>"	
+	fi
 }
 
 tg_notify(){
