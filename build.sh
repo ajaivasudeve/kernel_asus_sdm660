@@ -6,7 +6,7 @@ git config --global user.email "ajaivasudeve@gmail.com"
 
 # setup build environment
 apt-get update
-apt-get install -y build-essential bc python curl zip gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev
+apt-get install -y build-essential bc python curl zip gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev wget
 
 # clone clang toolchain
 git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b master
@@ -30,6 +30,24 @@ args+="CROSS_COMPILE_ARM32=$gcc_32_path "
 clean(){
 	make mrproper
 	make $args mrproper
+}
+
+changelog(){
+	git log --pretty=format:"- %h %s" --since="1 week 1 day" > changelog.txt
+	if [ ! -s changelog.txt ] 
+	then
+		echo "- No recent changes!" > changelog.txt
+	fi
+	wget https://bitbucket.org/$BB_USER/$BB_REPO/raw/HEAD/${1}_changelog.txt
+	mv ${1}_changelog.txt changelog_old.txt
+	date="$(date +"%d-%m-%Y")"
+	echo "[$date]" >> changelog_new.txt
+	cat changelog_new.txt changelog.txt >> final_changelog.txt
+	echo "" >> final_changelog.txt
+	echo "" >> final_changelog.txt
+	cat final_changelog.txt changelog_old.txt > ${1}_changelog.txt
+	curl -u $BB_AUTH_STRING -X POST https://api.bitbucket.org/2.0/repositories/$BB_USER/$BB_REPO/src -F ${1}_changelog.txt=@${1}_changelog.txt
+	rm -rf changelog_new.txt changelog_old.txt final_changelog.txt ${1}_changelog.txt changelog.txt
 }
 
 build_z2_plus(){
@@ -67,6 +85,7 @@ mkzip (){
 	mv -f "$zipname" $CIRCLE_WORKING_DIRECTORY
 	cd $CIRCLE_WORKING_DIRECTORY
 	if [ "$weekly" = true ]; then
+		changelog "${1}"
 		tg_upload "$zipname" "${1}" "$duration" "$chat_id"
 		curl -X POST "https://$BB_AUTH_STRING@api.bitbucket.org/2.0/repositories/$BB_USER/$BB_REPO/downloads" --form files=@"$zipname"
 	else
@@ -91,8 +110,8 @@ tg_upload(){
 <code>${3}</code>
 <b>Last Commit:</b> 
 <a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
-<b>Mirror Link:</b> 
-<a href='$MIRROR/${1}'>Download</a>"
+
+<a href='$MIRROR/${1}'>Mirror</a> | <a href='https://bitbucket.org/$BB_USER/$BB_REPO/raw/HEAD/${2}_changelog.txt'>Changelog</a>"
 	else
 	curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
         -F chat_id="${4}" \
