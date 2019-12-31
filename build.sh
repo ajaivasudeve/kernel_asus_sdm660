@@ -86,35 +86,16 @@ mkzip (){
 	cd $CIRCLE_WORKING_DIRECTORY
 	if [ "$weekly" = true ]; then
 		changelog "${1}"
-		tg_upload "$zipname" "${1}" "$duration" "$chat_id"
 		curl -X POST "https://$BB_AUTH_STRING@api.bitbucket.org/2.0/repositories/$BB_USER/$BB_REPO/downloads" --form files=@"$zipname"
+		tg_notify "$zipname" "${1}" "$duration"
 	else
-		tg_upload "$zipname" "${1}" "$duration" "$chat_id_1"
+		tg_upload "$zipname" "${1}" "$duration"	
 	fi		
 }
 
 tg_upload(){
-	if [ "$weekly" = true ]; then	
-   	curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
-        -F chat_id="${4}" \
-        -F "disable_web_page_preview=true" \
-        -F "parse_mode=HTML" \
-        -F caption="
-<b>Device:</b> 
-<code>${2}</code>
-<b>Build Type:</b>
-<code>$type</code>
-<b>Branch:</b> 
-<code>$CIRCLE_BRANCH</code>
-<b>Build Duration:</b> 
-<code>${3}</code>
-<b>Last Commit:</b> 
-<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
-
-<a href='$MIRROR/${1}'>Mirror</a> | <a href='https://bitbucket.org/$BB_USER/$BB_REPO/raw/HEAD/${2}_changelog.txt'>Changelog</a>"
-	else
 	curl -F document=@"${1}" "https://api.telegram.org/bot$token/sendDocument" \
-        -F chat_id="${4}" \
+        -F chat_id="${chat_id_1}" \
         -F "disable_web_page_preview=true" \
         -F "parse_mode=HTML" \
         -F caption="
@@ -128,7 +109,6 @@ tg_upload(){
 <code>${3}</code>
 <b>Last Commit:</b> 
 <a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>"	
-	fi
 }
 
 tg_notify(){
@@ -136,7 +116,19 @@ tg_notify(){
                         -d chat_id="${chat_id}" \
                         -d "disable_web_page_preview=true" \
                         -d "parse_mode=HTML" \
-                        -d text="<code>${1}</code>"
+                        -d text="
+<b>Device:</b> 
+<code>${2}</code>
+<b>Build Type:</b>
+<code>$type</code>
+<b>Branch:</b> 
+<code>$CIRCLE_BRANCH</code>
+<b>Build Duration:</b> 
+<code>${3}</code>
+<b>Last Commit:</b> 
+<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
+
+<a href='$MIRROR/${1}'>Download</a> | <a href='https://bitbucket.org/$BB_USER/$BB_REPO/raw/HEAD/${2}_changelog.txt'>Changelog</a>"
 }
 
 terminate(){
