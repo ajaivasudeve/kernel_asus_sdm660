@@ -3,6 +3,7 @@
 # configure git
 git config --global user.name "ajaivasudeve"
 git config --global user.email "ajaivasudeve@gmail.com"
+git config --global core.abbrev 8
 
 # setup build environment
 apt-get update
