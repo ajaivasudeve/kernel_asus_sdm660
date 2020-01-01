@@ -109,7 +109,7 @@ tg_upload(){
 <b>Build Duration:</b> 
 <code>${3}</code>
 <b>Last Commit:</b> 
-<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>"	
+<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>"	
 }
 
 tg_notify(){
@@ -127,7 +127,7 @@ tg_notify(){
 <b>Build Duration:</b> 
 <code>${3}</code>
 <b>Last Commit:</b> 
-<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
+<a href='https://github.com/$CIRCLE_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1'>$(git log --pretty=format:'%h' -1)</a>
 
 <a href='$MIRROR/${1}'>Download</a> | <a href='https://bitbucket.org/$BB_USER/$BB_REPO/raw/HEAD/${2}_changelog.txt'>Changelog</a>"
 }
