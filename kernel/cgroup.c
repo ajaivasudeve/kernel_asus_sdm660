@@ -2776,10 +2776,10 @@ static ssize_t __cgroup_procs_write(struct kernfs_open_file *of, char *buf,
 	if (!ret)
 		ret = cgroup_attach_task(cgrp, tsk, threadgroup);
 
-	/* Boost CPU to the max for 250 ms when any app becomes a top app */
+	/* Boost CPU to the max for 1250 ms when any app becomes a top app */
 	if (!ret && !memcmp(cgrp->kn->name, "top-app", sizeof("top-app"))) {
-		input_boost_max_kick(250);
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
+		input_boost_max_kick(1250);
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1250);
 	}
 
 	put_task_struct(tsk);

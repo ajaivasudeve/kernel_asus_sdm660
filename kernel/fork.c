@@ -1794,11 +1794,11 @@ long _do_fork(unsigned long clone_flags,
 	int trace = 0;
 	long nr;
 
-	/* Boost CPU to the max for 1500 ms when userspace launches an app */
+	/* Boost CPU to the max for 3000 ms when userspace launches an app */
 	if (is_zygote_pid(current->pid) &&
 		time_before(jiffies, last_input_time + msecs_to_jiffies(500))) {
-		input_boost_max_kick(1500);
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1500);
+		input_boost_max_kick(3000);
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 3000);
 	}
 
 	/*

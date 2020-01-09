@@ -204,8 +204,8 @@ static int fb_event_callback(struct notifier_block *self,
 
 		switch (*blank) {
 		case FB_BLANK_UNBLANK:
-			input_boost_max_kick(1000);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
+			input_boost_max_kick(2000);
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 2000);
 			schedule_delayed_work(&pdata->check_status,
 				msecs_to_jiffies(interval));
 			display_on = true;
