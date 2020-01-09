@@ -82,9 +82,11 @@ on enable-low-power
     # disable thermal hotplug to switch governor
     write /sys/module/msm_thermal/core_control/enabled 0
 
-    # enable adaptive lmk
-    write /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk 1
-    write /sys/module/lowmemorykiller/parameters/vmpressure_file_min 81250
+    # configure memory parameters
+    write /sys/module/lowmemorykiller/parameters/minfree "5120,10240,20480,25600,33280,40960"
+    write /sys/module/lowmemorykiller/parameters/vmpressure_file_min 40960
+    write /sys/module/lowmemorykiller/parameters/swappiness 60
+    write /sys/module/lowmemorykiller/parameters/vfs_cache_pressure 60
 
     # set sync wakee policy tunable
     write /proc/sys/kernel/sched_prefer_sync_wakee_to_waker 1
