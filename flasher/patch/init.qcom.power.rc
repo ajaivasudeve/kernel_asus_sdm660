@@ -121,8 +121,6 @@ on enable-low-power
 
     # input boost config
     write /sys/module/cpu_boost/parameters/input_boost_enabled 1
-    write /sys/module/cpu_boost/parameters/smart_boost_enabled 1
-    write /sys/module/cpu_boost/parameters/sb_damp_factor 10
     write /sys/module/cpu_boost/parameters/dsb_enabled 1
     write /sys/module/cpu_boost/parameters/max_boost_enabled 0
     write /sys/module/cpu_boost/parameters/mdss_boost_enabled 1

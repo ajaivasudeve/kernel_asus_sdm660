@@ -29,9 +29,6 @@ struct cpu_sync {
 	unsigned int input_boost_min;
 };
 
-#define MAX_FREQ_BIG 2150400
-#define MAX_FREQ_LITTLE 1593600
-
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
 static struct workqueue_struct *cpu_boost_wq;
 
@@ -48,14 +45,10 @@ static unsigned int max_boost_enabled = 0;
 module_param(max_boost_enabled, uint, 0644);
 static unsigned int mdss_boost_enabled = 1;
 module_param(mdss_boost_enabled, uint, 0644);
-static unsigned int input_boost_ms = 500;
+static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
 static unsigned int mdss_timeout = 5000;
 module_param(mdss_timeout, uint, 0644);
-unsigned int smart_boost_enabled = 1;
-module_param(smart_boost_enabled, uint, 0644);
-unsigned int sb_damp_factor = 10;
-module_param(sb_damp_factor, uint, 0644);
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 static int dynamic_stune_boost_ta;
@@ -74,7 +67,6 @@ static struct delayed_work dynamic_stune_boost_rem;
 
 static struct delayed_work input_boost_rem;
 unsigned long last_input_time;
-unsigned long last_ib_time = 0;
 
 /*
  * The CPUFREQ_ADJUST notifier is used to override the current policy min to
@@ -204,20 +196,18 @@ static void do_dynamic_stune_boost_rem(struct work_struct *work)
 
 static void do_input_boost(struct work_struct *work)
 {
-	unsigned int i, freq_l, freq_b, sb_freq_l, sb_freq_b;
+	unsigned int i;
 	struct cpu_sync *i_sync_info;
 
 	if (max_boost_active || input_boost_ms < 1) {
 		return;
 	}
-	if (time_before(jiffies, last_ib_time + msecs_to_jiffies(input_boost_ms * 9 / 10)))
-   		return;
+
 	cancel_delayed_work_sync(&input_boost_rem);
 
-	if (smart_boost_enabled < 1) {
-		/* Set the input_boost_min for all CPUs in the system */
-		pr_debug("Setting input boost min for all CPUs\n");
-		for_each_possible_cpu(i) {
+	/* Set the input_boost_min for all CPUs in the system */
+	pr_debug("Setting input boost min for all CPUs\n");
+	for_each_possible_cpu(i) {
 		i_sync_info = &per_cpu(sync_info, i);
 			if (i < 2) {
 				i_sync_info->input_boost_min = input_boost_freq_l;
@@ -225,24 +215,6 @@ static void do_input_boost(struct work_struct *work)
 				i_sync_info->input_boost_min = input_boost_freq_b;
 			}
 		}
-	} else {
-		freq_l = (smart_load * MAX_FREQ_LITTLE) / 100;
-		freq_b = (smart_load * MAX_FREQ_BIG) / 100;
-
-		(freq_l > input_boost_freq_l) ? (sb_freq_l = freq_l)
-									 : (sb_freq_l = input_boost_freq_l);
-		(freq_b > input_boost_freq_b) ? (sb_freq_b = freq_b)
-									 : (sb_freq_b = input_boost_freq_b);
-
-		for_each_possible_cpu(i) {
-		i_sync_info = &per_cpu(sync_info, i);
-			if (i < 2) {
-				i_sync_info->input_boost_min = sb_freq_l;
-			} else {
-				i_sync_info->input_boost_min = sb_freq_b;
-			}
-		}
-	}
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
@@ -250,7 +222,6 @@ static void do_input_boost(struct work_struct *work)
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
 	do_dsb_kick();
-	last_ib_time = jiffies;
 }
 
 void mdss_boost_kick()

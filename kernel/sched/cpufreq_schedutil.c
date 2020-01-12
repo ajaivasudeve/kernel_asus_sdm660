@@ -15,7 +15,6 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <trace/events/power.h>
-#include <linux/cpu_boost.h>
 
 #include "sched.h"
 #include "tune.h"
@@ -29,8 +28,6 @@ unsigned long boosted_cpu_util(int cpu);
 #define cpufreq_enable_fast_switch(x)
 #define cpufreq_disable_fast_switch(x)
 #define LATENCY_MULTIPLIER			(1000)
-#define SB_SAMPLE_SIZE 20
-#define MIN_LOG_INTERVAL 50
 
 struct sugov_tunables {
 	struct gov_attr_set attr_set;
@@ -90,10 +87,6 @@ struct sugov_cpu {
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
 static DEFINE_PER_CPU(struct sugov_tunables *, cached_tunables);
 static unsigned int stale_ns;
-unsigned int load_array[SB_SAMPLE_SIZE];
-static int log_count = 0;
-unsigned int smart_load = 0;
-unsigned long last_log = 0;
 
 /************************ Governor internals ***********************/
 
@@ -194,92 +187,6 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
 	}
 }
 
-static int
-get_min_load ()
-{
-  int i, err;
-  int min_load = load_array[0];
-
-  for (i = 0; i < SB_SAMPLE_SIZE; i++)
-    {
-      if (load_array[i] < min_load)
-	min_load = load_array[i];
-    }
-
-  err = min_load;
-  return err;
-}
-
-static int
-get_max_load ()
-{
-  int i, err;
-  int max_load = load_array[0];
-  for (i = 0; i < SB_SAMPLE_SIZE; i++)
-    {
-      if (load_array[i] > max_load)
-	max_load = load_array[i];
-    }
-  err = max_load;
-  return err;
-}
-
-static int
-get_avg_load ()
-{
-  int i, err;
-  int sum, avg_load = 0;
-
-  for (i = 0; i < SB_SAMPLE_SIZE; i++)
-    {
-      sum = sum + load_array[i];
-    }
-  avg_load = sum / SB_SAMPLE_SIZE;
-  err = avg_load;
-  return err;
-}
-
-static void
-get_smart_load (unsigned int min_load, unsigned int max_load,
-		unsigned int avg_load)
-{
-  int min_load_x = sb_damp_factor;
-
-  smart_load =
-    ((min_load * min_load_x) + avg_load + max_load) / (min_load_x + 2);
-
-  if (smart_load < min_load)
-    {
-      smart_load = min_load;
-    }
-}
-
-static void
-log_load (unsigned long util, unsigned long max)
-{
-  int inst_load, min_load, max_load, avg_load;
-
-  if (time_before (jiffies, last_log + msecs_to_jiffies (MIN_LOG_INTERVAL)))
-    {
-      return;
-    }
-
-  inst_load = (util * 100) / max;
-
-  load_array[log_count] = inst_load;
-  log_count = log_count + 1;
-
-  if (log_count > (SB_SAMPLE_SIZE - 1))
-    {
-      log_count = 0;
-    }
-  min_load = get_min_load ();
-  max_load = get_max_load ();
-  avg_load = get_avg_load ();
-  get_smart_load (min_load, max_load, avg_load);
-  last_log = jiffies;
-}
-
 /**
  * get_next_freq - Compute a new frequency for a given cpufreq policy.
  * @sg_policy: schedutil policy object to compute the new frequency for.
@@ -309,8 +216,6 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
 	unsigned int og_freq;			
-
-	log_load(util, max);			
 				
 	if (!sg_policy->tunables->alt_freq_eq)
 		freq = (freq + (freq >> 2)) * util / max;
