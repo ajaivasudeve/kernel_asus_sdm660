@@ -25,6 +25,7 @@
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/kthread.h>
+#include <linux/fb.h>
 
 static int touchboost = 0;
 
@@ -73,7 +74,7 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 	cpumask_var_t limit_mask;
 	const char *reset = "0:0 1:0 2:0 3:0 4:0 5:0 6:0 7:0";
 
-	if (touchboost == 0)
+	if (touchboost == 0 || !display_on)
 		cp = reset;
 
 	while ((cp = strpbrk(cp + 1, " :")))
@@ -83,7 +84,7 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 	if (!(ntokens % 2))
 		return -EINVAL;
 
-	if (touchboost == 0)
+	if (touchboost == 0 || !display_on)
 		cp = reset;
 	else
 		cp = buf;
