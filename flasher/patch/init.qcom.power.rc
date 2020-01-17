@@ -83,6 +83,7 @@ on enable-low-power
     write /sys/module/msm_thermal/core_control/enabled 0
 
     # configure memory parameters
+    write /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk 0
     write /sys/module/lowmemorykiller/parameters/minfree "5120,10240,20480,25600,33280,40960"
     write /sys/module/lowmemorykiller/parameters/vmpressure_file_min 40960
     write /sys/module/lowmemorykiller/parameters/swappiness 60
