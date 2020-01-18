@@ -34,7 +34,7 @@ clean(){
 }
 
 changelog(){
-	git log --pretty=format:"- %h %s" --since="1 week" > changelog.txt
+	git log --first-parent --pretty=format:"- %h %s" --since="1 week" > changelog.txt
 	if [ ! -s changelog.txt ] 
 	then
 		echo "- No recent changes!" > changelog.txt
