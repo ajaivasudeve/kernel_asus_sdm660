@@ -84,8 +84,8 @@ on enable-low-power
 
     # configure memory parameters
     write /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk 0
-    write /sys/module/lowmemorykiller/parameters/minfree "5120,10240,20480,25600,33280,40960"
-    write /sys/module/lowmemorykiller/parameters/vmpressure_file_min 40960
+    write /sys/module/lowmemorykiller/parameters/minfree "6400,12800,21760,38400,51200,89600"
+    write /sys/module/lowmemorykiller/parameters/vmpressure_file_min 89600
     write /sys/module/lowmemorykiller/parameters/swappiness 60
     write /sys/module/lowmemorykiller/parameters/vfs_cache_pressure 60
 
