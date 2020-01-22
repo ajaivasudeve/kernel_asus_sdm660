@@ -37,6 +37,7 @@
 #include <linux/string_helpers.h>
 #include <linux/alarmtimer.h>
 #include <linux/qpnp/qpnp-revid.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 /* Register offsets */
 
@@ -481,6 +482,7 @@ struct fg_chip {
 	struct device		*dev;
 	struct platform_device	*pdev;
 	struct regmap		*regmap;
+	struct qpnp_vadc_chip	*vadc_dev;
 	u8			pmic_subtype;
 	u8			pmic_revision[4];
 	u8			revision[4];
@@ -2759,12 +2761,12 @@ out:
 static void update_temp_data(struct work_struct *work)
 {
 	s16 temp;
-	u8 reg[2];
 	bool tried_again = false;
 	int rc, ret, timeout = TEMP_PERIOD_TIMEOUT_MS;
 	struct fg_chip *chip = container_of(work,
 				struct fg_chip,
 				update_temp_work.work);
+	struct qpnp_vadc_result result;
 
 	if (chip->fg_restarting)
 		goto resched;
@@ -2797,17 +2799,22 @@ wait:
 		}
 	}
 
-	/* Read FG_DATA_BATT_TEMP now */
-	rc = fg_mem_read(chip, reg, fg_data[0].address,
-		fg_data[0].len, fg_data[0].offset,
-		chip->sw_rbias_ctrl ? 1 : 0);
-	if (rc) {
-		pr_err("Failed to update temp data\n");
-		goto out;
+	chip->vadc_dev = qpnp_get_vadc(chip->dev, "vadc_therm");
+
+	if (IS_ERR(chip->vadc_dev)) {
+		rc = PTR_ERR(chip->vadc_dev);
+		if (rc != -EPROBE_DEFER)
+			pr_err("VADC property: vadc_therm missing\n");
 	}
 
-	temp = reg[0] | (reg[1] << 8);
-	temp = (temp * TEMP_LSB_16B / 1000) - DECIKELVIN;
+	rc = qpnp_vadc_read(chip->vadc_dev, LR_MUX8_PU1_AMUX_THM4, &result);
+	if (!rc) {
+		temp = result.physical;
+		/* Value is in DegreeC; Convert it to deciDegC.*/
+		temp = (temp * 10);
+	} else {
+		pr_err("Unable to read battery_temp\n");
+	}
 
 	/*
 	 * If temperature is within the specified range (e.g. -60C and 150C),
