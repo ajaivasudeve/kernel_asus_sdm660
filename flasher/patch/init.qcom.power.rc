@@ -127,10 +127,10 @@ on enable-low-power
     write /sys/module/cpu_boost/parameters/mdss_boost_enabled 1
     write /sys/module/cpu_boost/parameters/input_boost_freq_l 652800
     write /sys/module/cpu_boost/parameters/input_boost_freq_b 652800
-    write /sys/module/cpu_boost/parameters/input_boost_ms 850
+    write /sys/module/cpu_boost/parameters/input_boost_ms 150
     write /sys/module/cpu_boost/parameters/dynamic_stune_boost_ta 1
     write /sys/module/cpu_boost/parameters/dynamic_stune_boost_fg 0
-    write /sys/module/cpu_boost/parameters/dynamic_stune_boost_ms 850
+    write /sys/module/cpu_boost/parameters/dynamic_stune_boost_ms 150
 
     # devfreq boost config
     write /sys/module/devfreq_boost/parameters/input_boost_enabled 1
