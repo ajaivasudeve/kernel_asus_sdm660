@@ -389,7 +389,7 @@ static int __init devfreq_boost_init(void)
 	if (!d)
 		return -ENOMEM;
 
-	wq = alloc_workqueue("devfreq_boost_wq", WQ_HIGHPRI, 0);
+	wq = alloc_workqueue("devfreq_boost_wq", WQ_HIGHPRI | WQ_UNBOUND, 0);
 	if (!wq) {
 		ret = -ENOMEM;
 		goto free_d;
