@@ -23,6 +23,7 @@
 #include <linux/input.h>
 #include <linux/time.h>
 #include <linux/cpu_boost.h>
+#include <linux/sched/sysctl.h>
 
 struct cpu_sync {
 	int cpu;
@@ -139,6 +140,10 @@ static void do_input_boost_rem(struct work_struct *work)
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
+
+	if (!sysctl_sched_energy_aware) {
+		sysctl_sched_energy_aware = 1;
+	}
 
 	if (max_boost_active) {
 		max_boost_active = false;
