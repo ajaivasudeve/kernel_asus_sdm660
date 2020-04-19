@@ -18,8 +18,8 @@
 
 # In case of out of tree build, build as a module
 # (when build inside kernel we will not enter this directory and this will have no effect)
-ifeq ($(CONFIG_SND_SOC_TFA98XX),)
-CONFIG_SND_SOC_TFA98XX := m
+ifeq ($(CONFIG_SND_SOC_TFA9874),)
+CONFIG_SND_SOC_TFA9874 := m
 endif
 
 ifneq ($(KERNELRELEASE),)
@@ -36,7 +36,7 @@ EXTRA_CFLAGS += -DTFA98XX_GIT_VERSIONS=\"$(GIT_VERSION)\"
 EXTRA_CFLAGS += -I$(src)/inc
 EXTRA_CFLAGS += -Werror
 
-obj-$(CONFIG_SND_SOC_TFA98XX) := snd-soc-tfa98xx.o
+obj-$(CONFIG_SND_SOC_TFA9874) := snd-soc-tfa98xx.o
 
 snd-soc-tfa98xx-objs += src/tfa98xx.o
 snd-soc-tfa98xx-objs += src/tfa_container.o
