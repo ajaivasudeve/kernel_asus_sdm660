@@ -5306,3 +5306,14 @@ CONFIG_OID_REGISTRY=y
 CONFIG_ARCH_HAS_SG_CHAIN=y
 CONFIG_QMI_ENCDEC=y
 # CONFIG_QMI_ENCDEC_DEBUG is not set
+
+#
+# Asus machine platform configuration options
+#
+CONFIG_MACH_ASUS=y
+CONFIG_MACH_ASUS_SDM660=y
+
+#
+# Asus device selection
+#
+CONFIG_MACH_ASUS_X00T=y
