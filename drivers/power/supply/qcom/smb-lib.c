@@ -25,6 +25,7 @@
 #include "battery.h"
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
+#include <linux/gpio.h>
 
 #define smblib_err(chg, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chg->name,	\
@@ -39,6 +40,8 @@
 			pr_debug("%s: %s: " fmt, chg->name,	\
 				__func__, ##__VA_ARGS__);	\
 	} while (0)
+
+extern struct gpio_control *global_gpio;
 
 static bool is_secure(struct smb_charger *chg, int addr)
 {
@@ -282,6 +285,22 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 			result = &smblib_apsd_results[HVDCP2];
 	}
 
+	if (result->bit & (DCP_CHARGER_BIT)) {
+		rc = gpio_direction_output(global_gpio->ADC_SW_EN, 1);
+		if (rc) {
+			pr_debug("failed to pull-high ADC_SW_EN-gpios59\n", rc);
+		} else {
+			pr_debug("Pull high USBSW_S\n", rc);
+		}
+		
+		rc = gpio_direction_output(global_gpio->ADCPWREN_PMI_GP1, 1);
+		if (rc) {
+			pr_debug("failed to pull-high ADCPWREN_PMI_GP1-gpios34\n", rc);
+		} else {
+			pr_debug("Pull high ADC_VH_EN\n", rc);
+		}
+	}		
+
 	return result;
 }
 
@@ -398,6 +417,18 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 			chg->usb_icl_change_irq_enabled = true;
 		}
 	}
+
+	rc = gpio_direction_output(global_gpio->ADCPWREN_PMI_GP1, 0);
+	if (rc)
+		pr_debug("failed to pull-low ADCPWREN_PMI_GP1-gpios34\n", rc);
+	else
+		pr_debug("Pull low ADC_VH_EN\n", rc);
+
+	rc = gpio_direction_output(global_gpio->ADC_SW_EN, 0);
+	if (rc)
+		pr_debug("failed to pull-low ADC_SW_EN-gpios59\n", rc);
+	else
+		pr_debug("Pull low USBSW_S\n", rc);
 
 	return rc;
 }
@@ -642,7 +673,7 @@ int smblib_mapping_cc_delta_from_field_value(struct smb_chg_param *param,
 
 static void smblib_uusb_removal(struct smb_charger *chg)
 {
-	int rc;
+	int rc,val;
 	struct smb_irq_data *data;
 	struct storm_watch *wdata;
 
@@ -707,6 +738,24 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	if (rc < 0)
 		smblib_err(chg,
 			"Couldn't un-vote DCP from USB ICL rc=%d\n", rc);
+
+	val = gpio_get_value(global_gpio->ADCPWREN_PMI_GP1);
+	if (val == 1) {
+		rc = gpio_direction_output(global_gpio->ADCPWREN_PMI_GP1, 0);
+		if (rc)
+			pr_debug("failed to pull-low ADCPWREN_PMI_GP1-gpios34\n", rc);
+		else
+			pr_debug("Pull low ADC_VH_EN\n", rc);
+	}
+
+	val = gpio_get_value(global_gpio->ADC_SW_EN);
+	if (val == 1) {
+		rc = gpio_direction_output(global_gpio->ADC_SW_EN, 0);
+		if (rc)
+			pr_debug("failed to pull-low ADC_SW_EN-gpios59\n", rc);
+		else
+			pr_debug("Pull low USBSW_S\n", rc);
+	}
 }
 
 void smblib_suspend_on_debug_battery(struct smb_charger *chg)
@@ -1825,6 +1874,15 @@ int smblib_get_prop_from_bms(struct smb_charger *chg,
 	return rc;
 }
 
+int smblib_get_prop_charging_enabled(struct smb_charger *chg,
+				  union power_supply_propval *val)
+{
+	val->intval
+		= !((get_client_vote(chg->usb_icl_votable, USER_VOTER) == 0)
+		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER));
+	return 0;
+}
+
 /***********************
  * BATTERY PSY SETTERS *
  ***********************/
@@ -1843,6 +1901,30 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	}
 
 	rc = vote(chg->dc_suspend_votable, USER_VOTER, (bool)val->intval, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
+			(bool)val->intval ? "suspend" : "resume", rc);
+		return rc;
+	}
+
+	power_supply_changed(chg->batt_psy);
+	return rc;
+}
+
+int smblib_set_prop_charging_enabled(struct smb_charger *chg,
+				  const union power_supply_propval *val)
+{
+	int rc;
+
+	/* vote 0mA when suspended */
+	rc = vote(chg->usb_icl_votable, USER_VOTER, !(bool)val->intval, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
+			(bool)val->intval ? "suspend" : "resume", rc);
+		return rc;
+	}
+
+	rc = vote(chg->dc_suspend_votable, USER_VOTER, !(bool)val->intval, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
@@ -2483,9 +2565,9 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 	return 0;
 }
 
-#define SDP_CURRENT_UA			500000
-#define CDP_CURRENT_UA			1500000
-#define DCP_CURRENT_UA			1500000
+#define SDP_CURRENT_UA			2100000
+#define CDP_CURRENT_UA			2100000
+#define DCP_CURRENT_UA			2100000
 #define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
