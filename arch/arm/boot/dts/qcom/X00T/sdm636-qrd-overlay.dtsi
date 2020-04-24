@@ -415,7 +415,7 @@
 	status = "okay";
 
 	tfa98xx@34 {
-		compatible = "nxp,tfa98xx";
+		compatible = "tfa,tfa98xx";
 		reg = <0x34>;
 	};
 };
