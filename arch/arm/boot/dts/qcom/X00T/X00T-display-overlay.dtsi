@@ -1,0 +1,99 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+#include "dsi-panel-nt36672-1080p-video-txd.dtsi"
+#include "dsi-panel-nt36672-1080p-video.dtsi"
+#include "dsi-panel-td4310-1080p-video-txd.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+
+	/delete-node/ qcom,dsi-panel-sim-video.dtsi;
+	/delete-node/ qcom,dsi-panel-sim-dualmipi-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-truly-dualmipi-wqxga-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-truly-dualmipi-wqxga-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-nt36850-truly-dualmipi-wqhd-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-sharp-dualmipi-wqxga-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-truly-dsc-wqxga-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-truly-dsc-wqxga-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-dualmipi-wqxga-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35597-dualmipi-wqxga-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35695b-truly-fhd-video.dtsi;
+	/delete-node/ qcom,dsi-panel-nt35695b-truly-fhd-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-truly-1080p-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-truly-1080p-video.dtsi;
+	/delete-node/ qcom,dsi-panel-rm67195-amoled-fhd-cmd.dtsi;
+	/delete-node/ qcom,dsi-panel-lgd-incell-sw49106-fhd-video.dtsi;
+	/delete-node/ qcom,dsi-panel-hx8399c-fhd-plus-video.dtsi;
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+	qcom,mdss-fb-map-prim = <&mdss_fb0>;
+	qcom,mdss-fb-map-sec = <&mdss_fb2>;
+};
+
+&dsi_panel_pwr_supply {
+	qcom,panel-supply-entry@0 {
+		qcom,supply-pre-off-sleep = <2>;
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_nt36672_1080p_video_txd>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_nt36672_1080p_video_txd>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+	status = "disabled";	
+};
+
+&dsi_dual_nt36850_truly_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_nt36672_1080p_video_txd {
+  	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_nt36672_1080p_video {
+  	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_td4310_1080p_video_txd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&pm660l_lcdb {
+	status = "okay";
+};
+
+&pm660a_oledb {
+	status = "disabled";
+};
+
+&pm660a_labibb {
+	status = "okay";
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-limit-maximum-current = <200>;
+	qcom,qpnp-ibb-limit-max-current-enable;
+};
+
+&lab_regulator {
+	qcom,qpnp-lab-limit-maximum-current = <200>;
+	qcom,qpnp-lab-limit-max-current-enable;
+};

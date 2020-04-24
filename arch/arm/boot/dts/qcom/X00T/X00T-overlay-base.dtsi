@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+#include "X00T-display-overlay.dtsi"
+#include "X00T-audio-overlay.dtsi"
+#include "X00T-general-overlay.dtsi"
+#include "X00T-camera-overlay.dtsi"
+#include "X00T-touchscreen-overlay.dtsi"
+#include "X00T-power-overlay.dtsi"
+#include "X00T-sensor-overlay.dtsi"
+#include "X00T-led-overlay.dtsi"

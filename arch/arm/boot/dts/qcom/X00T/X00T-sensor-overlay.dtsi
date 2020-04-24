@@ -1,0 +1,196 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+&soc {
+	common_fp {
+		compatible = "common,fingerprint";
+		interrupt-parent = <&tlmm>;
+		interrupts = <72 0x0>;
+
+		common,gpio_reset   = <&tlmm 20 0>;
+		common,gpio_irq		= <&tlmm 72 0>;
+		common,gpio_vdd		= <&pm660l_gpios 5 0>;
+		pinctrl-names		=	"commonfp_reset_reset",
+						"commonfp_reset_active",
+						"commonfp_irq_active";
+		pinctrl-0 = <&commonfp_reset_reset>;
+		pinctrl-1 = <&commonfp_reset_active>;
+		pinctrl-2 = <&commonfp_irq_active>;
+	};
+
+	cdfinger_fingerprint {
+		compatible = "cdfinger,fingerprint";
+		interrupt-parent = <&tlmm>;
+		interrupts = <72 0x0>;
+		cdfinger,gpio_reset = <&tlmm 20 0>;
+		cdfinger,gpio_irq = <&tlmm 72 0>;
+	};
+
+	goodix_fingerprint {
+		compatible = "goodix,fingerprint";
+	};
+};
+
+&i2c_2 {
+	status = "okay";
+	semtech@28 {
+		compatible = "Semtech,sx9310";
+		reg = <0x28>;
+		vdd-supply  =<&pm660l_l3>;
+		vdd1-supply =<&pm660_l13>;  // for svdd
+		interrupt-parent = <&tlmm>;
+		Semtech,gpio-irq= <&tlmm 77 0x2008>; // gpio 77
+		interrupts = <77 0x2>;
+		pinctrl-names = "sarsensor_active", "sarsensor_suspend";
+		pinctrl-0 = <&sarsensor_int_active>;
+		pinctrl-1 = <&sarsensor_int_suspend>;
+	};
+};
+
+&i2c_7 {
+	status = "okay";
+	stk@48 {
+		compatible = "stk,stk3x1x";
+		reg = <0x48>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <45 0x2>;
+		vdd-supply = <&pm660l_l3>;
+		vio-supply = <&pm660_l14>;
+		stk,irq-gpio = <&tlmm 45 0x02>;
+		pinctrl-names = "psensor_active", "psensor_suspend";
+		pinctrl-0 = <&psensor_int_active>;
+		pinctrl-1 = <&psensor_int_suspend>;
+		stk,state-reg = <0x0>;
+		stk,psctrl-reg = <0x31>;
+		stk,alsctrl-reg = <0x39>;
+		stk,ledctrl-reg = <0xFF>;
+		stk,wait-reg = <0x0A>;
+		stk,ps-thdh = <120>;
+		stk,ps-thdl = <90>;
+		stk,transmittance = <1100>;
+	};
+};
+
+&blsp2_uart2_active {
+	mux {
+		pins = "gpio24", "gpio25";
+	};
+
+	config {
+		pins = "gpio24", "gpio25";
+	};
+};
+
+&blsp2_uart2_sleep {
+	mux {
+		pins = "gpio24", "gpio25";
+	};
+
+	config {
+		pins = "gpio24", "gpio25";
+	};
+};
+
+&tlmm {
+	ts_mux {
+		commonfp_reset_reset: commonfp_reset_reset {
+			mux {
+				pins = "gpio20";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio20";
+				drive-strength = <2>;
+				bias-disable = <0>;
+				output-low;
+			};
+		};
+
+		commonfp_reset_active: commonfp_reset_active {
+			mux {
+				pins = "gpio20";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio20";
+				drive-strength = <2>;
+				bias-disable = <0>;
+				output-high;
+			};
+		};
+
+		commonfp_irq_active: commonfp_irq_active {
+			mux {
+				pins = "gpio72";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio72";
+				drive-strength = <2>;
+				bias-disable = <0>;
+				input-enable;
+			};
+		};
+
+		psensor_irq {
+			psensor_int_active: psensor_int_active {
+				mux {
+					pins = "gpio45";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio45";
+					drive-strength = <2>;
+					bias-pull-up;
+					input-enable;
+				};
+			};
+
+			psensor_int_suspend: psensor_int_suspend {
+				mux {
+					pins = "gpio45";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio45";
+					drive-strength = <2>;
+					bias-pull-up;
+					input-enable;
+				};
+			};
+		};
+
+		sarsensor_irq {
+				sarsensor_int_active: sarsensor_int_active {
+					mux {
+						pins = "gpio77";
+						function = "gpio";
+					};
+
+					config {
+						pins = "gpio77";
+						drive-strength = <2>;
+						bias-pull-up;
+						input-enable;
+					};
+				};
+
+				sarsensor_int_suspend: sarsensor_int_suspend {
+					mux {
+						pins = "gpio77";
+						function = "gpio";
+					};
+
+					config {
+						pins = "gpio77";
+						drive-strength = <2>;
+						bias-pull-up;
+						input-enable;
+					};
+				};
+		};		
+
+	};
+};
+

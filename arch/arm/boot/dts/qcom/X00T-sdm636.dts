@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+/dts-v1/;
+
+#include "sdm636.dtsi"
+#include "sdm636-qrd.dtsi"
+#include "sdm660-internal-codec.dtsi"
+#include "X00T/X00T-overlay-base.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM 636 PM660 + PM660L QRD";
+	compatible = "qcom,sdm636-qrd", "qcom,sdm636", "qcom,qrd";
+	qcom,board-id = <0x1000b 0>;
+	qcom,pmic-id = <0x0001001b 0x0101011a 0x0 0x0>,
+			<0x0001001b 0x0201011a 0x0 0x0>,
+			<0x0001001b 0x0102001a 0x0 0x0>;
+};

@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+&i2c_4 {
+	status = "okay";
+
+	novatek@62 {
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		status = "ok";
+
+		avdd-supply = <&pm660l_l3>;
+		vdd-supply = <&pm660_l11>;
+		lcm_lab-supply = <&lcdb_ldo_vreg>;
+		lcm_ibb-supply = <&lcdb_ncp_vreg>;
+
+		novatek,reset-gpio = <&tlmm 66 0x0>;
+		novatek,irq-gpio = <&tlmm 67 0x0>;
+	};
+
+	synaptics_dsx@70 {
+		compatible = "synaptics,dsx-i2c";
+		reg = <0x70>;
+		interrupt-parent = <&tlmm>;
+		vdd-supply = <&pm660_l11>;
+		avdd-supply = <&pm660l_l3>;
+		lcm_lab-supply = <&lcdb_ldo_vreg>;
+		lcm_ibb-supply = <&lcdb_ncp_vreg>;
+	
+		synaptics,pwr-reg-name = "avdd";
+		synaptics,bus-reg-name = "vdd";
+		synaptics,ub-i2c-addr = <0x2c>;
+		synaptics,irq-gpio = <&tlmm 67 0x2008>;
+		synaptics,irq-on-state = <0>;
+		synaptics,power-delay-ms = <200>;
+		synaptics,reset-delay-ms = <200>;
+		synaptics,reset-on-state = <0>;
+		synaptics,reset-active-ms = <20>;
+
+	};
+};

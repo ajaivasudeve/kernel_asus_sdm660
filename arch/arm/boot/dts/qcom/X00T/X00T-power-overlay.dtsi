@@ -1,0 +1,111 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+&qrd_batterydata {
+	/delete-node/ qcom,qrd_msm8998_skuk_3000mah;
+
+	#include "fg-gen3-batterydata-3292665_Huaqin_QL1650cos_5000mAh.dtsi"
+};
+
+&spmi_bus {
+	qcom,pm660@0 {
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <10256>;
+				qcom,s2-timer = <10>;
+				qcom,s2-type = <4>;
+			};
+		};
+	};
+};
+
+&pm660_vadc {
+	chan@4f {
+		qcom,hw-settle-time = <0xf>;
+	};
+};
+
+&pm660_charger {
+	qcom,micro-usb;
+	qcom,fcc-max-ua = <2100000>;
+	qcom,fv-max-uv = <4357000>;
+	qcom,usb-icl-ua = <2100000>;
+	qcom,float-option = <1>;
+	qcom,auto-recharge-soc;
+
+	ADC_SW_EN-gpios59 = <&tlmm 71 0x0>;
+	ADCPWREN_PMI_GP1-gpios34 = <&tlmm 3 0x0>;
+};
+
+&pm660_pdphy {
+	status = "disable";
+};
+
+&pm660_fg {
+	qcom,fg-esr-timer-asleep = <160 256>;
+	qcom,fg-cutoff-voltage = <3400>;
+	qcom,fg-empty-voltage = <2800>;
+	qcom,fg-esr-tight-filter-micro-pct = <20000>;
+	qcom,fg-esr-broad-filter-micro-pct = <25000>;
+	qcom,fg-esr-tight-lt-filter-micro-pct = <2000>;
+	qcom,fg-esr-broad-lt-filter-micro-pct = <2200>;
+	qcom,slope-limit-temp-threshold = <150>;
+	qcom,slope-limit-coeffs = <1 1 1 1>;
+	qcom,fg-chg-term-current = <150>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,hold-soc-while-full;
+	qcom,linearize-soc;
+	qcom,fg-force-load-profile;
+	qcom,fg-recharge-voltage = <4150>;
+	qcom,fg-recharge-soc-thr = <98>;
+	qcom,fg-auto-recharge-soc;
+	qcom,fg-rsense-sel=<1>;
+};
+
+&qusb_phy0 {
+	qcom,qusb-phy-init-seq = <0xf8 0x80
+				0x83 0x84
+				0x81 0x88
+				0xc7 0x8c
+				0x30 0x08
+				0x79 0x0c
+				0x21 0x10
+				0x14 0x9c
+				0x9f 0x1c
+				0x00 0x18>;
+};
+
+&qusb_phy1 {
+	qcom,qusb-phy-init-seq = <0xf8 0x80
+				0x83 0x84
+				0x81 0x88
+				0xc7 0x8c
+				0x30 0x08
+				0x79 0x0c
+				0x21 0x10
+				0x14 0x9c
+				0x9f 0x1c
+				0x00 0x18>;
+};
+
+&usb3 {
+	extcon = <&pm660_charger>;
+	vbus_dwc3-supply = <&smb2_vbus>;
+
+	dwc3@a800000 {
+		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};		
+};
+
+&usb_nop_phy {
+	compatible = "usb-nop-xceiv";
+};
+
+&ssphy {
+	status = "disable";
+};
+
+&smb138x {
+	status = "disable";
+};
