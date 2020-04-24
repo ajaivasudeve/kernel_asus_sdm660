@@ -2431,6 +2431,22 @@ static struct snd_soc_dai_link msm_int_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA6,
 	},
+
+	{/* hw:x,40 */
+		.name = "Tertiary MI2S_TX Hostless",
+		.stream_name = "Tertiary MI2S_TX Hostless",
+		.cpu_dai_name = "TERT_MI2S_TX_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
 };
 
 
@@ -2450,6 +2466,15 @@ static struct snd_soc_dai_link msm_int_wsa_dai[] = {
 		.dpcm_capture = 1,
 		.ignore_pmdown_time = 1,
 	},
+};
+
+static struct snd_soc_dai_link_component tfa98xx_codecs[] ={
+	{
+		.name     = "tfa98xx.6-0034",
+		.of_node  = NULL,
+		.dai_name = "tfa98xx-aif-6-34",
+	},
+
 };
 
 static struct snd_soc_dai_link msm_int_be_dai[] = {
@@ -2792,8 +2817,8 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.stream_name = "Tertiary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.2",
 		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
+		.codecs = tfa98xx_codecs,
+		.num_codecs = 1,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
@@ -2807,8 +2832,8 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.stream_name = "Tertiary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.2",
 		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-tx",
+		.codecs = tfa98xx_codecs,
+		.num_codecs = 1,
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
