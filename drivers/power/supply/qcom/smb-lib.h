@@ -369,6 +369,11 @@ struct smb_charger {
 	int			pulse_cnt;
 };
 
+struct gpio_control {
+	u32 ADC_SW_EN;
+	u32 ADCPWREN_PMI_GP1;
+};
+
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
 int smblib_masked_write(struct smb_charger *chg, u16 addr, u8 mask, u8 val);
 int smblib_write(struct smb_charger *chg, u16 addr, u8 val);
@@ -530,4 +535,8 @@ void smblib_usb_typec_change(struct smb_charger *chg);
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+int smblib_get_prop_charging_enabled(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_set_prop_charging_enabled(struct smb_charger *chg,
+				const union power_supply_propval *val);				
 #endif /* __SMB2_CHARGER_H */

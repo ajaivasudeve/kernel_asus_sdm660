@@ -28,8 +28,11 @@
 #include "smb-lib.h"
 #include "storm-watch.h"
 #include <linux/pmic-voter.h>
+#include <linux/of_gpio.h>
 
 #define SMB2_DEFAULT_WPWR_UW	8000000
+
+struct gpio_control *global_gpio;
 
 static struct smb_params v1_params = {
 	.fcc			= {
@@ -944,6 +947,7 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_RERUN_AICL,
 	POWER_SUPPLY_PROP_DP_DM,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
@@ -970,6 +974,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_get_prop_input_suspend(chg, val);
 		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		rc = smblib_get_prop_charging_enabled(chg, val);
+		break;	
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		rc = smblib_get_prop_batt_charge_type(chg, val);
 		break;
@@ -1082,6 +1089,9 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_set_prop_input_suspend(chg, val);
 		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		rc = smblib_set_prop_charging_enabled(chg, val);
+		break;	
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_set_prop_system_temp_level(chg, val);
 		break;
@@ -2253,12 +2263,43 @@ static int smb2_probe(struct platform_device *pdev)
 	struct smb2 *chip;
 	struct smb_charger *chg;
 	int rc = 0;
+	u8 HVDVP_reg;
+	u8 USBIN_AICL_reg;
 	union power_supply_propval val;
 	int usb_present, batt_present, batt_health, batt_charge_type;
+	struct gpio_control *gpio_ctrl;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
+
+	gpio_ctrl = devm_kzalloc(&pdev->dev, sizeof(*gpio_ctrl), GFP_KERNEL);
+	if (!gpio_ctrl)
+		return -ENOMEM;
+
+	global_gpio = gpio_ctrl;
+
+	gpio_ctrl->ADC_SW_EN = of_get_named_gpio(pdev->dev.of_node, "ADC_SW_EN-gpios59", 0);
+	rc = gpio_request(gpio_ctrl->ADC_SW_EN, "ADC_SW_EN-gpios59");
+	if (rc)
+		pr_debug("failed to request ADC_SW_EN-gpios59\n", rc);
+	else
+		pr_debug("Success to request ADC_SW_EN-gpios59\n", rc);
+
+	gpio_ctrl->ADCPWREN_PMI_GP1 = of_get_named_gpio(pdev->dev.of_node, "ADCPWREN_PMI_GP1-gpios34", 0);
+	rc = gpio_request(gpio_ctrl->ADCPWREN_PMI_GP1, "ADCPWREN_PMI_GP1-gpios34");
+	if (rc)
+		pr_debug("failed to request ADCPWREN_PMI_GP1-gpios34\n", rc);
+	else
+		pr_debug("Success to request ADCPWREN_PMI_GP1-gpios34\n", rc);
+
+	if(!rc) {
+		pr_debug("smb2_probe pull down gpio\n, rc");
+		rc = gpio_direction_output(global_gpio->ADC_SW_EN, 0);
+		rc = gpio_direction_output(gpio_ctrl->ADCPWREN_PMI_GP1, 0);
+	}
+	rc = gpio_get_value(gpio_ctrl->ADCPWREN_PMI_GP1);
+	pr_debug("ADCPWREN_PMI_GP1 init H/L %d\n",rc);
 
 	chg = &chip->chg;
 	chg->dev = &pdev->dev;
@@ -2414,6 +2455,28 @@ static int smb2_probe(struct platform_device *pdev)
 	batt_charge_type = val.intval;
 
 	device_init_wakeup(chg->dev, true);
+
+	rc = smblib_read(chg, USBIN_OPTIONS_1_CFG_REG, &HVDVP_reg);
+	pr_debug("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
+
+	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG, HVDCP_EN_BIT, 0x0);
+
+	rc = smblib_read(chg, USBIN_OPTIONS_1_CFG_REG, &HVDVP_reg);
+	if (rc < 0)
+		pr_err("Failed to set HVDCP_EN_BIT=%x\n", rc);
+
+	pr_debug("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
+
+	rc = smblib_read(chg, USBIN_AICL_OPTIONS_CFG_REG, &USBIN_AICL_reg);
+	pr_debug("enter1 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
+	
+	rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG, SUSPEND_ON_COLLAPSE_USBIN_BIT, 0x0);
+	
+	rc = smblib_read(chg, USBIN_AICL_OPTIONS_CFG_REG, &USBIN_AICL_reg);
+	if (rc < 0)
+		pr_err("Failed to set USBIN_OPTIONS_1_CFG_REG\n", rc);
+	
+	pr_debug("enter2 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
 
 	pr_info("QPNP SMB2 probed successfully usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,
