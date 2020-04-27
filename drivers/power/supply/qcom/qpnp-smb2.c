@@ -483,7 +483,7 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		break;
 	}
 	if (rc < 0) {
-		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_info("Couldn't get prop %d rc = %d\n", psp, rc);
 		return -ENODATA;
 	}
 	return 0;
@@ -635,7 +635,7 @@ static int smb2_usb_port_get_prop(struct power_supply *psy,
 	}
 
 	if (rc < 0) {
-		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_info("Couldn't get prop %d rc = %d\n", psp, rc);
 		return -ENODATA;
 	}
 
@@ -736,12 +736,12 @@ static int smb2_usb_main_get_prop(struct power_supply *psy,
 		rc = smblib_get_icl_current(chg, &val->intval);
 		break;
 	default:
-		pr_debug("get prop %d is not supported in usb-main\n", psp);
+		pr_info("get prop %d is not supported in usb-main\n", psp);
 		rc = -EINVAL;
 		break;
 	}
 	if (rc < 0) {
-		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_info("Couldn't get prop %d rc = %d\n", psp, rc);
 		return -ENODATA;
 	}
 	return 0;
@@ -841,7 +841,7 @@ static int smb2_dc_get_prop(struct power_supply *psy,
 		return -EINVAL;
 	}
 	if (rc < 0) {
-		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_info("Couldn't get prop %d rc = %d\n", psp, rc);
 		return -ENODATA;
 	}
 	return 0;
@@ -947,7 +947,6 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_RERUN_AICL,
 	POWER_SUPPLY_PROP_DP_DM,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
-	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
@@ -974,9 +973,6 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_get_prop_input_suspend(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		rc = smblib_get_prop_charging_enabled(chg, val);
-		break;	
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		rc = smblib_get_prop_batt_charge_type(chg, val);
 		break;
@@ -1071,7 +1067,7 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	}
 
 	if (rc < 0) {
-		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_info("Couldn't get prop %d rc = %d\n", psp, rc);
 		return -ENODATA;
 	}
 
@@ -1089,9 +1085,6 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_set_prop_input_suspend(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		rc = smblib_set_prop_charging_enabled(chg, val);
-		break;	
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_set_prop_system_temp_level(chg, val);
 		break;
@@ -2280,24 +2273,24 @@ static int smb2_probe(struct platform_device *pdev)
 	gpio_ctrl->ADC_SW_EN = of_get_named_gpio(pdev->dev.of_node, "ADC_SW_EN-gpios59", 0);
 	rc = gpio_request(gpio_ctrl->ADC_SW_EN, "ADC_SW_EN-gpios59");
 	if (rc)
-		pr_debug("failed to request ADC_SW_EN-gpios59\n", rc);
+		pr_info("failed to request ADC_SW_EN-gpios59\n", rc);
 	else
-		pr_debug("Success to request ADC_SW_EN-gpios59\n", rc);
+		pr_info("Success to request ADC_SW_EN-gpios59\n", rc);
 
 	gpio_ctrl->ADCPWREN_PMI_GP1 = of_get_named_gpio(pdev->dev.of_node, "ADCPWREN_PMI_GP1-gpios34", 0);
 	rc = gpio_request(gpio_ctrl->ADCPWREN_PMI_GP1, "ADCPWREN_PMI_GP1-gpios34");
 	if (rc)
-		pr_debug("failed to request ADCPWREN_PMI_GP1-gpios34\n", rc);
+		pr_info("failed to request ADCPWREN_PMI_GP1-gpios34\n", rc);
 	else
-		pr_debug("Success to request ADCPWREN_PMI_GP1-gpios34\n", rc);
+		pr_info("Success to request ADCPWREN_PMI_GP1-gpios34\n", rc);
 
 	if(!rc) {
-		pr_debug("smb2_probe pull down gpio\n, rc");
+		pr_info("smb2_probe pull down gpio\n, rc");
 		rc = gpio_direction_output(global_gpio->ADC_SW_EN, 0);
 		rc = gpio_direction_output(gpio_ctrl->ADCPWREN_PMI_GP1, 0);
 	}
 	rc = gpio_get_value(gpio_ctrl->ADCPWREN_PMI_GP1);
-	pr_debug("ADCPWREN_PMI_GP1 init H/L %d\n",rc);
+	pr_info("ADCPWREN_PMI_GP1 init H/L %d\n",rc);
 
 	chg = &chip->chg;
 	chg->dev = &pdev->dev;
@@ -2455,7 +2448,7 @@ static int smb2_probe(struct platform_device *pdev)
 	device_init_wakeup(chg->dev, true);
 
 	rc = smblib_read(chg, USBIN_OPTIONS_1_CFG_REG, &HVDVP_reg);
-	pr_debug("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
+	pr_info("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
 
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG, HVDCP_EN_BIT, 0x0);
 
@@ -2463,10 +2456,10 @@ static int smb2_probe(struct platform_device *pdev)
 	if (rc < 0)
 		pr_err("Failed to set HVDCP_EN_BIT=%x\n", rc);
 
-	pr_debug("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
+	pr_info("smb2_probe HVDVP_reg=0x%x\n",HVDVP_reg);
 
 	rc = smblib_read(chg, USBIN_AICL_OPTIONS_CFG_REG, &USBIN_AICL_reg);
-	pr_debug("enter1 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
+	pr_info("enter1 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
 	
 	rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG, SUSPEND_ON_COLLAPSE_USBIN_BIT, 0x0);
 	
@@ -2474,7 +2467,7 @@ static int smb2_probe(struct platform_device *pdev)
 	if (rc < 0)
 		pr_err("Failed to set USBIN_OPTIONS_1_CFG_REG\n", rc);
 	
-	pr_debug("enter2 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
+	pr_info("enter2 smb2_probe USBIN_AICL_reg=0x%x\n",USBIN_AICL_reg);
 
 	pr_info("QPNP SMB2 probed successfully usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,
