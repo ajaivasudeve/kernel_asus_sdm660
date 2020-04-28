@@ -336,6 +336,13 @@
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
+#define KEY_TP_GESTURE_C 	249
+#define KEY_TP_GESTURE_E 	250
+#define KEY_TP_GESTURE_S 	251
+#define KEY_TP_GESTURE_V 	252
+#define KEY_TP_GESTURE_W 	253
+#define KEY_TP_GESTURE_Z 	254
+
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
