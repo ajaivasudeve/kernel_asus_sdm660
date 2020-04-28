@@ -46,6 +46,13 @@
 #include <linux/input/mt.h>
 #endif
 
+static bool allow_dttw = true;
+static bool allow_gesture;
+extern bool wake_gestures_en;
+
+struct synaptics_rmi4_data *syna_rmi4_data;
+static struct kobject *synaptics_gesture_control_kobj;
+
 #define INPUT_PHYS_NAME "synaptics_dsx/touch_input"
 #define STYLUS_PHYS_NAME "synaptics_dsx/stylus"
 
@@ -76,6 +83,9 @@
 #define FB_READY_WAIT_MS 100
 #define FB_READY_TIMEOUT_S 30
 */
+
+#define SYNA_TDDI
+
 #ifdef SYNA_TDDI
 #define TDDI_LPWG_WAIT_US 10
 #endif
@@ -119,6 +129,25 @@
 #define F12_CONTINUOUS_MODE 0x00
 #define F12_WAKEUP_GESTURE_MODE 0x02
 #define F12_UDG_DETECT 0x0f
+
+#define F12_DOUBLECLICK_DETECT  	0x03
+#define F12_SWIPE_DETECT 		0x07
+#define F12_VEE_DETECT 			0x0a
+#define F12_UNICODE_DETECT 		0x0b
+#define GESTURE_C	0x63
+#define GESTURE_E	0x65
+#define GESTURE_S	0x73
+#define GESTURE_W	0x77
+#define GESTURE_Z	0x7A
+
+#define GESTURE_EVENT_C 		KEY_TP_GESTURE_C
+#define GESTURE_EVENT_E 		KEY_TP_GESTURE_E
+#define GESTURE_EVENT_S 		KEY_TP_GESTURE_S
+#define GESTURE_EVENT_V 		KEY_TP_GESTURE_V
+#define GESTURE_EVENT_W 		KEY_TP_GESTURE_W
+#define GESTURE_EVENT_Z 		KEY_TP_GESTURE_Z
+#define GESTURE_EVENT_SWIPE_UP 		258
+#define GESTURE_EVENT_DOUBLE_CLICK 	KEY_WAKEUP
 
 static int synaptics_rmi4_check_status(struct synaptics_rmi4_data *rmi4_data,
 		bool *was_in_bl_mode);
@@ -935,6 +964,85 @@ static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t dclicknode_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", allow_dttw);
+}
+
+static ssize_t dclicknode_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	allow_dttw = enable;
+	syna_rmi4_data->enable_wakeup_gesture = enable;
+
+	return count;
+}
+
+static struct kobj_attribute dclicknode_attribute = __ATTR(dclicknode, 0664,
+							dclicknode_show,
+							dclicknode_store);
+
+static ssize_t gesture_node_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", allow_gesture);
+}
+
+static ssize_t gesture_node_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	allow_gesture = enable;
+	syna_rmi4_data->enable_wakeup_gesture = enable;
+
+	return count;
+}
+
+static struct kobj_attribute gesture_node_attribute = __ATTR(gesture_node, 0664,
+							gesture_node_show,
+							gesture_node_store);
+
+static struct attribute *synaptics_gesture_control_attrs[] = {
+		&dclicknode_attribute.attr,
+		&gesture_node_attribute.attr,
+		NULL,
+};
+
+static struct attribute_group synaptics_gesture_control_group = {
+		.attrs = synaptics_gesture_control_attrs,
+};
+
+int create_synaptics_gesture_control ()
+{
+	int ret;
+
+	synaptics_gesture_control_kobj = kobject_create_and_add("touchpanel", kernel_kobj);
+	if (synaptics_gesture_control_kobj == NULL) {
+		pr_warn("%s kobject create failed!\n", __func__);
+        }
+
+	ret = sysfs_create_group(synaptics_gesture_control_kobj, &synaptics_gesture_control_group);
+        if (ret) {
+		pr_warn("%s sysfs file create failed!\n", __func__);
+	}
+
+	return ret;
+}
+
+void destroy_synaptics_gesture_control(void) {
+	kobject_put(synaptics_gesture_control_kobj);
+}
+
 static void synaptics_rmi4_f11_wg(struct synaptics_rmi4_data *rmi4_data,
 		bool enable)
 {
@@ -1013,9 +1121,9 @@ static void synaptics_rmi4_f12_wg(struct synaptics_rmi4_data *rmi4_data,
 	}
 
 	if (enable)
-		reporting_control[rmi4_data->set_wakeup_gesture] = F12_WAKEUP_GESTURE_MODE;
+                reporting_control[2] = F12_WAKEUP_GESTURE_MODE;
 	else
-		reporting_control[rmi4_data->set_wakeup_gesture] = F12_CONTINUOUS_MODE;
+                reporting_control[2] = F12_CONTINUOUS_MODE;
 
 	retval = synaptics_rmi4_reg_write(rmi4_data,
 			fhandler->full_addr.ctrl_base + offset,
@@ -1202,6 +1310,47 @@ exit:
 	return touch_count;
 }
 
+static uint32_t synaptics_check_unicode_gesture(struct synaptics_rmi4_data *rmi4_data, int gesture_id)
+{
+	uint32_t keycode = 0;
+
+	dev_dbg(rmi4_data->pdev->dev.parent,
+			"%s: gesture_id = %x \n",
+			__func__, gesture_id);
+
+
+	switch (gesture_id) {
+		case GESTURE_C:
+				pr_debug("Gesture : Word-C.\n");
+				keycode = GESTURE_EVENT_C;
+			break;
+		case GESTURE_W:
+				pr_debug("Gesture : Word-W.\n");
+				keycode = GESTURE_EVENT_W;
+			break;
+
+		case GESTURE_Z:
+				pr_debug("Gesture : Word_Z.\n");
+				keycode = GESTURE_EVENT_Z;
+			break;
+
+		case GESTURE_E:
+				pr_debug("Gesture : Word_E.\n");
+				keycode = GESTURE_EVENT_E;
+			break;
+
+		case GESTURE_S:
+				pr_debug("Gesture : Word_S.\n");
+				keycode = GESTURE_EVENT_S;
+			break;
+
+		default:
+			break;
+	}
+
+	return keycode ;
+}
+
 static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		struct synaptics_rmi4_fn *fhandler)
 {
@@ -1219,6 +1368,15 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int temp;
+	int gesture_count= 0;
+	uint32_t keycode = 0;
+	int abs_x;
+	int abs_y;
+	int direction = 0;
+	int gesture_x_distance;
+	int gesture_y_distance;
+	int horizontal_direction = 1;
+	int vertical_direction = 2;
 #if defined(REPORT_2D_PRESSURE) || defined(F51_DISCRETE_FORCE)
 	int pressure;
 #endif
@@ -1253,17 +1411,65 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (retval < 0)
 			return 0;
 
-		gesture_type = rmi4_data->gesture_detection[0];
-
-		if (gesture_type && gesture_type != F12_UDG_DETECT) {
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
-			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
-			input_sync(rmi4_data->input_dev);
-			/* synaptics_rmi4_wakeup_gesture(rmi4_data, false); */
-			/* rmi4_data->suspend = false; */
+		for (;gesture_count<5;gesture_count++) {
+			pr_debug("[%d] DGY %d\n", gesture_count, rmi4_data->gesture_detection[gesture_count]);
 		}
 
+		gesture_type = rmi4_data->gesture_detection[0];
+		gesture_x_distance = rmi4_data->gesture_detection[1];
+		gesture_y_distance = rmi4_data->gesture_detection[2];
+
+		dev_dbg(rmi4_data->pdev->dev.parent,
+			"%s: gesture_type, gesture_x_distance, gesture_y_distance = %x, %x, %x\n",
+			__func__, gesture_type, gesture_x_distance, gesture_y_distance);
+
+		if (gesture_type != F12_UDG_DETECT) {
+			switch (gesture_type) {
+				case F12_DOUBLECLICK_DETECT:
+					pr_debug("Gesture : Double click.\n");
+					keycode = GESTURE_EVENT_DOUBLE_CLICK;
+					break;
+
+				case F12_UNICODE_DETECT:
+					pr_debug("Gesture : Unicode detect.\n");
+					keycode = synaptics_check_unicode_gesture(rmi4_data,rmi4_data->gesture_detection[2]);
+					break;
+
+				case F12_VEE_DETECT:
+					pr_debug("Gesture : Word_V.\n");
+					keycode = GESTURE_EVENT_V;
+					break;
+
+				case F12_SWIPE_DETECT:
+					abs_x = abs(gesture_x_distance);
+					abs_y = abs(gesture_y_distance);
+					direction = (abs_x > abs_y) ? horizontal_direction : vertical_direction;
+					if ((direction == vertical_direction) &&(gesture_y_distance > 0)){
+						pr_debug("Gesture : Swipe up.\n");
+						keycode = GESTURE_EVENT_SWIPE_UP;
+					}
+					break;
+				default:
+					break;
+			}
+			pr_debug("Gesture : keycode = %ud.\n", keycode);
+
+			if (!allow_dttw &&
+				keycode == GESTURE_EVENT_DOUBLE_CLICK)
+				return 0;
+
+			if (!allow_gesture &&
+				keycode != GESTURE_EVENT_DOUBLE_CLICK)
+				return 0;
+
+			if (keycode > 0) {
+				input_report_key(rmi4_data->input_dev, keycode, 1);
+				input_sync(rmi4_data->input_dev);
+				input_report_key(rmi4_data->input_dev, keycode, 0);
+				input_sync(rmi4_data->input_dev);
+			}
+
+		}
 		return 0;
 	}
 
@@ -2469,7 +2675,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 
 	}
 
-	retval = synaptics_rmi4_f12_find_sub(rmi4_data,
+	/*retval = synaptics_rmi4_f12_find_sub(rmi4_data,
 			fhandler, query_5->data, sizeof(query_5->data),
 			6, 20, 0);
 	if (retval == 1)
@@ -2477,7 +2683,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	else if (retval == 0)
 		rmi4_data->set_wakeup_gesture = 0;
 	else if (retval < 0)
-		goto exit;
+		goto exit;*/
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
 			fhandler->full_addr.ctrl_base + ctrl_23_offset,
@@ -3432,7 +3638,21 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 
 	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture) {
 		set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_DOUBLE_CLICK);
+		set_bit(KEY_C, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_C);
+		set_bit(KEY_E, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_E);
+		set_bit(KEY_S, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_S);
+		set_bit(KEY_W, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_W);
+		set_bit(KEY_Z, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_Z);
+		set_bit(KEY_V, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_V);
+		set_bit(KEY_UP, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, GESTURE_EVENT_SWIPE_UP);
 	}
 
 	return;
@@ -4146,7 +4366,7 @@ EXPORT_SYMBOL(synaptics_rmi4_new_function);
 
 static int synaptics_rmi4_probe(struct platform_device *pdev)
 {
-	int retval;
+	int retval, rc;
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	const struct synaptics_dsx_hw_interface *hw_if;
@@ -4195,6 +4415,8 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	mutex_init(&(rmi4_data->rmi4_irq_enable_mutex));
 
 	platform_set_drvdata(pdev, rmi4_data);
+
+	syna_rmi4_data = rmi4_data;
 
 	vir_button_map = bdata->vir_button_map;
 
@@ -4309,6 +4531,8 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	interrupt_signal.si_signo = SIGIO;
 	interrupt_signal.si_code = SI_USER;
 #endif
+
+	rc = create_synaptics_gesture_control();
 
 	rmi4_data->rb_workqueue =
 			create_singlethread_workqueue("dsx_rebuild_workqueue");
@@ -4520,7 +4744,7 @@ static void synaptics_rmi4_early_suspend(struct early_suspend *h)
 				sizeof(device_ctrl));
 	}
 	synaptics_rmi4_wakeup_gesture(rmi4_data, true);
-	usleep(TDDI_LPWG_WAIT_US);
+	udelay(TDDI_LPWG_WAIT_US);
 #endif
 	synaptics_rmi4_irq_enable(rmi4_data, false, false);
 	synaptics_rmi4_sleep_enable(rmi4_data, true);
@@ -4630,7 +4854,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 					sizeof(device_ctrl));
 		}
 		synaptics_rmi4_wakeup_gesture(rmi4_data, true);
-		usleep(TDDI_LPWG_WAIT_US);
+		udelay(TDDI_LPWG_WAIT_US);
 #endif
 		synaptics_rmi4_irq_enable(rmi4_data, false, false);
 		synaptics_rmi4_sleep_enable(rmi4_data, true);
@@ -4648,6 +4872,12 @@ exit:
 
 	rmi4_data->suspend = true;
 
+	if (!allow_dttw && !allow_gesture) {
+		wake_gestures_en = false;
+	} else {
+		wake_gestures_en = true;
+	}
+
 	return 0;
 }
 
@@ -4664,7 +4894,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	if (rmi4_data->enable_wakeup_gesture) {
 		disable_irq_wake(rmi4_data->irq);
-		synaptics_rmi4_wakeup_gesture(rmi4_data, false);
+		/*synaptics_rmi4_wakeup_gesture(rmi4_data, false);*/
 		goto exit;
 	}
 
@@ -4730,6 +4960,8 @@ static int __init synaptics_rmi4_init(void)
 static void __exit synaptics_rmi4_exit(void)
 {
 	platform_driver_unregister(&synaptics_rmi4_driver);
+
+	destroy_synaptics_gesture_control();
 
 	synaptics_rmi4_bus_exit();
 

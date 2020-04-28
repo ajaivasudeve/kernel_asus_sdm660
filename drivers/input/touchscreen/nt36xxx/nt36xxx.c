@@ -24,6 +24,7 @@
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+#include <linux/wakelock.h>
 
 #if defined(CONFIG_FB)
 #ifdef CONFIG_DRM_MSM
@@ -39,6 +40,14 @@
 #if NVT_TOUCH_ESD_PROTECT
 #include <linux/jiffies.h>
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
+
+#ifdef WAKEUP_GESTURE
+static struct wake_lock gestrue_wakelock;
+static bool allow_dttw = true;
+static bool allow_gesture;
+extern bool wake_gestures_en;
+static struct kobject *nvt_gesture_control_kobj;
+#endif
 
 #if NVT_TOUCH_ESD_PROTECT
 static struct delayed_work nvt_esd_check_work;
@@ -85,20 +94,32 @@ const uint16_t touch_key_array[TOUCH_KEY_NUM] = {
 #endif
 
 #if WAKEUP_GESTURE
+#define GESTURE_EVENT_C 		KEY_TP_GESTURE_C
+#define GESTURE_EVENT_E 		KEY_TP_GESTURE_E
+#define GESTURE_EVENT_S 		KEY_TP_GESTURE_S
+#define GESTURE_EVENT_V 		KEY_TP_GESTURE_V
+#define GESTURE_EVENT_W 		KEY_TP_GESTURE_W
+#define GESTURE_EVENT_Z 		KEY_TP_GESTURE_Z
+#define GESTURE_EVENT_SWIPE_UP		255
+#define GESTURE_EVENT_SWIPE_DOWN	256
+#define GESTURE_EVENT_SWIPE_LEFT	257
+#define GESTURE_EVENT_SWIPE_RIGHT	258
+#define GESTURE_EVENT_DOUBLE_CLICK	KEY_WAKEUP
+
 const uint16_t gesture_key_array[] = {
-	KEY_POWER,  //GESTURE_WORD_C
-	KEY_POWER,  //GESTURE_WORD_W
-	KEY_POWER,  //GESTURE_WORD_V
-	KEY_POWER,  //GESTURE_DOUBLE_CLICK
-	KEY_POWER,  //GESTURE_WORD_Z
-	KEY_POWER,  //GESTURE_WORD_M
-	KEY_POWER,  //GESTURE_WORD_O
-	KEY_POWER,  //GESTURE_WORD_e
-	KEY_POWER,  //GESTURE_WORD_S
-	KEY_POWER,  //GESTURE_SLIDE_UP
-	KEY_POWER,  //GESTURE_SLIDE_DOWN
-	KEY_POWER,  //GESTURE_SLIDE_LEFT
-	KEY_POWER,  //GESTURE_SLIDE_RIGHT
+	GESTURE_EVENT_C,
+	GESTURE_EVENT_W,
+	GESTURE_EVENT_V,
+	GESTURE_EVENT_DOUBLE_CLICK,
+	GESTURE_EVENT_Z,
+	KEY_M,
+	KEY_O,
+	GESTURE_EVENT_E,
+	GESTURE_EVENT_S,
+	GESTURE_EVENT_SWIPE_UP,
+	GESTURE_EVENT_SWIPE_DOWN,
+	GESTURE_EVENT_SWIPE_LEFT,
+	GESTURE_EVENT_SWIPE_RIGHT,
 };
 #endif
 
@@ -118,11 +139,13 @@ static void nvt_irq_enable(bool enable)
 	if (enable) {
 		if (!ts->irq_enabled) {
 			enable_irq(ts->client->irq);
+			enable_irq_wake(ts->client->irq);
 			ts->irq_enabled = true;
 		}
 	} else {
 		if (ts->irq_enabled) {
 			disable_irq(ts->client->irq);
+			disable_irq_wake(ts->client->irq);
 			ts->irq_enabled = false;
 		}
 	}
@@ -666,11 +689,83 @@ static void nvt_flash_proc_deinit(void)
 #define GESTURE_SLIDE_DOWN      22
 #define GESTURE_SLIDE_LEFT      23
 #define GESTURE_SLIDE_RIGHT     24
-/* customized gesture id */
-#define DATA_PROTOCOL           30
 
-/* function page definition */
-#define FUNCPAGE_GESTURE         1
+static ssize_t dclicknode_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", allow_dttw);
+}
+
+static ssize_t dclicknode_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	allow_dttw = enable;
+	
+	return count;
+}
+
+static struct kobj_attribute dclicknode_attribute = __ATTR(dclicknode, 0664,
+							dclicknode_show,
+							dclicknode_store);
+
+static ssize_t gesture_node_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", allow_gesture);
+}
+
+static ssize_t gesture_node_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	allow_gesture = enable;
+
+	return count;
+}
+
+static struct kobj_attribute gesture_node_attribute = __ATTR(gesture_node, 0664,
+							gesture_node_show,
+							gesture_node_store);
+
+static struct attribute *nvt_gesture_control_attrs[] = {
+		&dclicknode_attribute.attr,
+		&gesture_node_attribute.attr,
+		NULL,
+};
+
+static struct attribute_group nvt_gesture_control_group = {
+		.attrs = nvt_gesture_control_attrs,
+};
+
+int create_nvt_gesture_control ()
+{
+	int ret = 0;
+
+	nvt_gesture_control_kobj = kobject_create_and_add("touchpanel", kernel_kobj);
+	if (nvt_gesture_control_kobj == NULL) {
+		pr_warn("%s kobject create failed!\n", __func__);
+        }
+
+	ret = sysfs_create_group(nvt_gesture_control_kobj, &nvt_gesture_control_group);
+        if (ret) {
+		pr_warn("%s sysfs file create failed!\n", __func__);
+	}
+
+	return ret;
+}
+
+void destroy_nvt_gesture_control(void) {
+	kobject_put(nvt_gesture_control_kobj);
+}
 
 /*******************************************************
 Description:
@@ -679,19 +774,9 @@ Description:
 return:
 	n.a.
 *******************************************************/
-void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
+void nvt_ts_wakeup_gesture_report(uint8_t gesture_id)
 {
 	uint32_t keycode = 0;
-	uint8_t func_type = data[2];
-	uint8_t func_id = data[3];
-
-	/* support fw specifal data protocol */
-	if ((gesture_id == DATA_PROTOCOL) && (func_type == FUNCPAGE_GESTURE)) {
-		gesture_id = func_id;
-	} else if (gesture_id > DATA_PROTOCOL) {
-		NVT_ERR("gesture_id %d is invalid, func_type=%d, func_id=%d\n", gesture_id, func_type, func_id);
-		return;
-	}
 
 	NVT_LOG("gesture_id = %d\n", gesture_id);
 
@@ -751,6 +836,14 @@ void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
 		default:
 			break;
 	}
+
+	if (!allow_dttw &&
+		keycode == GESTURE_EVENT_DOUBLE_CLICK)
+		return;
+
+	if (!allow_gesture &&
+		keycode != GESTURE_EVENT_DOUBLE_CLICK)
+		return;
 
 	if (keycode > 0) {
 		input_report_key(ts->input_dev, keycode, 1);
@@ -925,7 +1018,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 
 #if WAKEUP_GESTURE
 	if (bTouchIsAwake == 0) {
-		pm_wakeup_event(&ts->input_dev->dev, 5000);
+		wake_lock_timeout(&gestrue_wakelock, msecs_to_jiffies(500));
 	}
 #endif
 
@@ -955,7 +1048,8 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #if WAKEUP_GESTURE
 	if (bTouchIsAwake == 0) {
 		input_id = (uint8_t)(point_data[1] >> 3);
-		nvt_ts_wakeup_gesture_report(input_id, point_data);
+		nvt_ts_wakeup_gesture_report(input_id);
+		nvt_irq_enable(true);
 		mutex_unlock(&ts->lock);
 		return IRQ_HANDLED;
 	}
@@ -1313,6 +1407,17 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	for (retry = 0; retry < (sizeof(gesture_key_array) / sizeof(gesture_key_array[0])); retry++) {
 		input_set_capability(ts->input_dev, EV_KEY, gesture_key_array[retry]);
 	}
+	__set_bit(GESTURE_EVENT_DOUBLE_CLICK, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_E, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_W, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_S, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_V, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_Z, ts->input_dev->keybit);
+	__set_bit(GESTURE_EVENT_C, ts->input_dev->keybit);
+
+	wake_lock_init(&gestrue_wakelock, WAKE_LOCK_SUSPEND, "poll-wake-lock");
+
+	ret = create_nvt_gesture_control();
 #endif
 
 	sprintf(ts->phys, "input/ts");
@@ -1338,6 +1443,7 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 			NVT_ERR("request irq failed. ret=%d\n", ret);
 			goto err_int_request_failed;
 		} else {
+			enable_irq_wake(ts->client->irq);
 			nvt_irq_enable(false);
 			NVT_LOG("request irq %d succeed\n", client->irq);
 		}
@@ -1646,10 +1752,6 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		return 0;
 	}
 
-#if !WAKEUP_GESTURE
-	nvt_irq_enable(false);
-#endif
-
 #if NVT_TOUCH_ESD_PROTECT
 	NVT_LOG("cancel delayed work sync\n");
 	cancel_delayed_work_sync(&nvt_esd_check_work);
@@ -1663,16 +1765,30 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	bTouchIsAwake = 0;
 
 #if WAKEUP_GESTURE
-	//---write command to enter "wakeup gesture mode"---
-	buf[0] = EVENT_MAP_HOST_CMD;
-	buf[1] = 0x13;
-	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
+	if (!allow_dttw && !allow_gesture) {
+		nvt_irq_enable(false);
 
-	enable_irq_wake(ts->client->irq);
+		//---write i2c command to enter "deep sleep mode"---
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = 0x11;
+		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
+		wake_gestures_en = false;
+		NVT_LOG("Disabled touch wakeup gesture\n");
+	}
+	else {
+		//---write i2c command to enter "wakeup gesture mode"---
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = 0x13;
+		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
 
-	NVT_LOG("Enabled touch wakeup gesture\n");
+		wake_gestures_en = true;
+		
+		nvt_irq_enable(true);
+		NVT_LOG("Enabled touch wakeup gesture\n");
+	}
 
 #else // WAKEUP_GESTURE
+	nvt_irq_enable(false);
 	//---write command to enter "deep sleep mode"---
 	buf[0] = EVENT_MAP_HOST_CMD;
 	buf[1] = 0x11;
@@ -1734,7 +1850,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 		nvt_check_fw_reset_state(RESET_STATE_REK);
 	}
 
-#if !WAKEUP_GESTURE
+#if WAKEUP_GESTURE
 	nvt_irq_enable(true);
 #endif
 
@@ -1894,6 +2010,7 @@ return:
 ********************************************************/
 static void __exit nvt_driver_exit(void)
 {
+	destroy_nvt_gesture_control();
 	i2c_del_driver(&nvt_i2c_driver);
 }
 
