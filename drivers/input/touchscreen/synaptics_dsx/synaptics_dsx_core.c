@@ -750,6 +750,127 @@ static struct kobj_attribute virtual_key_map_attr = {
 	.show = synaptics_rmi4_virtual_key_map_show,
 };
 
+#if SYNA_POWER_SOURCE_CUST_EN
+static int syna_lcm_bias_power_init(struct synaptics_rmi4_data *rmi4_data)
+{
+	int ret;
+	rmi4_data->lcm_lab = regulator_get(rmi4_data->pdev->dev.parent, "lcm_lab");
+	if (IS_ERR(rmi4_data->lcm_lab)){
+		ret = PTR_ERR(rmi4_data->lcm_lab);
+		pr_err("Regulator get failed lcm_lab ret=%d", ret);
+		goto _end;
+	}
+	if (regulator_count_voltages(rmi4_data->lcm_lab)>0){
+		ret = regulator_set_voltage(rmi4_data->lcm_lab, LCM_LAB_MIN_UV, LCM_LAB_MAX_UV);
+		if (ret){
+			pr_err("Regulator set_vtg failed lcm_lab ret=%d", ret);
+			goto reg_lcm_lab_put;
+		}
+	}
+	rmi4_data->lcm_ibb = regulator_get(rmi4_data->pdev->dev.parent, "lcm_ibb");
+	if (IS_ERR(rmi4_data->lcm_ibb)){
+		ret = PTR_ERR(rmi4_data->lcm_ibb);
+		pr_err("Regulator get failed lcm_ibb ret=%d", ret);
+		goto reg_set_lcm_lab_vtg;
+	}
+	if (regulator_count_voltages(rmi4_data->lcm_ibb)>0){
+		ret = regulator_set_voltage(rmi4_data->lcm_ibb, LCM_IBB_MIN_UV, LCM_IBB_MAX_UV);
+		if (ret){
+			pr_err("Regulator set_vtg failed lcm_lab ret=%d", ret);
+			goto reg_lcm_ibb_put;
+		}
+	}
+	return 0;
+reg_lcm_ibb_put:
+	regulator_put(rmi4_data->lcm_ibb);
+	rmi4_data->lcm_ibb = NULL;
+reg_set_lcm_lab_vtg:
+	if (regulator_count_voltages(rmi4_data->lcm_lab) > 0){
+		regulator_set_voltage(rmi4_data->lcm_lab, 0, LCM_LAB_MAX_UV);
+	}
+reg_lcm_lab_put:
+	regulator_put(rmi4_data->lcm_lab);
+	rmi4_data->lcm_lab = NULL;
+_end:
+	return ret;
+}
+
+static int syna_lcm_bias_power_deinit(struct synaptics_rmi4_data *rmi4_data)
+{
+	if (rmi4_data-> lcm_ibb != NULL){
+		if (regulator_count_voltages(rmi4_data->lcm_ibb) > 0){
+			regulator_set_voltage(rmi4_data->lcm_ibb, 0, LCM_LAB_MAX_UV);
+		}
+		regulator_put(rmi4_data->lcm_ibb);
+	}
+	if (rmi4_data-> lcm_lab != NULL){
+		if (regulator_count_voltages(rmi4_data->lcm_lab) > 0){
+			regulator_set_voltage(rmi4_data->lcm_lab, 0, LCM_LAB_MAX_UV);
+		}
+		regulator_put(rmi4_data->lcm_lab);
+	}
+	return 0;
+
+}
+
+
+static int syna_lcm_power_source_ctrl(struct synaptics_rmi4_data *rmi4_data, int enable)
+{
+	int rc;
+
+	if (rmi4_data->lcm_lab!= NULL && rmi4_data->lcm_ibb!= NULL){
+		if (enable){
+			if (atomic_inc_return(&(rmi4_data->lcm_lab_power)) == 1) {
+				rc = regulator_enable(rmi4_data->lcm_lab);
+				if (rc) {
+					atomic_dec(&(rmi4_data->lcm_lab_power));
+					pr_err("Regulator lcm_lab enable failed rc=%d", rc);
+				}
+			}
+			else {
+				atomic_dec(&(rmi4_data->lcm_lab_power));
+			}
+			if (atomic_inc_return(&(rmi4_data->lcm_ibb_power)) == 1) {
+				rc = regulator_enable(rmi4_data->lcm_ibb);
+				if (rc) {
+					atomic_dec(&(rmi4_data->lcm_ibb_power));
+					pr_err("Regulator lcm_ibb enable failed rc=%d", rc);
+				}
+			}
+			else {
+				atomic_dec(&(rmi4_data->lcm_ibb_power));
+			}
+		}
+		else {
+			if (atomic_dec_return(&(rmi4_data->lcm_lab_power)) == 0) {
+				rc = regulator_disable(rmi4_data->lcm_lab);
+				if (rc)
+				{
+					atomic_inc(&(rmi4_data->lcm_lab_power));
+					pr_err("Regulator lcm_lab disable failed rc=%d", rc);
+				}
+			}
+			else{
+				atomic_inc(&(rmi4_data->lcm_lab_power));
+			}
+			if (atomic_dec_return(&(rmi4_data->lcm_ibb_power)) == 0) {
+				rc = regulator_disable(rmi4_data->lcm_ibb);
+				if (rc)	{
+					atomic_inc(&(rmi4_data->lcm_ibb_power));
+					pr_err("Regulator lcm_ibb disable failed rc=%d", rc);
+				}
+			}
+			else{
+				atomic_inc(&(rmi4_data->lcm_ibb_power));
+			}
+		}
+	}
+	else
+		pr_err("Regulator lcm_ibb or lcm_lab is invalid");
+	return 0;
+}
+#endif
+
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4444,6 +4565,19 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		goto err_set_gpio;
 	}
 
+#if SYNA_POWER_SOURCE_CUST_EN
+	atomic_set(&(rmi4_data->lcm_lab_power), 0);
+	atomic_set(&(rmi4_data->lcm_ibb_power), 0);
+	retval = syna_lcm_bias_power_init(rmi4_data);
+
+	if (retval) {
+		pr_err("power resource init error!\n");
+		goto err_power_resource_init_fail;
+	}
+
+	syna_lcm_power_source_ctrl(rmi4_data, 1);
+#endif	
+
 	if (hw_if->ui_hw_init) {
 		retval = hw_if->ui_hw_init(rmi4_data);
 		if (retval < 0) {
@@ -4598,10 +4732,15 @@ err_set_input_dev:
 
 err_ui_hw_init:
 err_set_gpio:
+#ifdef SYNA_POWER_SOURCE_CUST_EN
+	syna_lcm_power_source_ctrl(rmi4_data, 0);
+	syna_lcm_bias_power_deinit(rmi4_data);
+err_power_resource_init_fail:
+#endif
 	synaptics_rmi4_enable_reg(rmi4_data, false);
 
 err_enable_reg:
-	synaptics_rmi4_get_reg(rmi4_data, false);
+        synaptics_rmi4_get_reg(rmi4_data, false);	
 
 err_get_reg:
 	kfree(rmi4_data);
@@ -4685,16 +4824,17 @@ static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
 			container_of(self, struct synaptics_rmi4_data,
 			fb_notifier);
 
-	if (evdata && evdata->data && rmi4_data) {
-		if (event == FB_EVENT_BLANK) {
-			transition = evdata->data;
-			if (*transition == FB_BLANK_POWERDOWN) {
-				synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
-				rmi4_data->fb_ready = false;
-			} else if (*transition == FB_BLANK_UNBLANK) {
-				synaptics_rmi4_resume(&rmi4_data->pdev->dev);
-				rmi4_data->fb_ready = true;
-			}
+	if (evdata && evdata->data && event == FB_EARLY_EVENT_BLANK) {
+		transition = evdata->data;
+		if (*transition == FB_BLANK_POWERDOWN) {
+			synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
+			rmi4_data->fb_ready = false;
+		}
+	} else if (evdata && evdata->data && event == FB_EVENT_BLANK){
+	        transition = evdata->data;
+		if (*transition == FB_BLANK_UNBLANK) {
+			synaptics_rmi4_resume(&rmi4_data->pdev->dev);
+			rmi4_data->fb_ready = true;
 		}
 	}
 
@@ -4874,8 +5014,11 @@ exit:
 
 	if (!allow_dttw && !allow_gesture) {
 		wake_gestures_en = false;
+		syna_lcm_power_source_ctrl(rmi4_data, 0);
+		pr_debug("sleep suspend end  disable vsp/vsn\n");
 	} else {
 		wake_gestures_en = true;
+		pr_debug("gesture suspend end not disable vsp/vsn\n");
 	}
 
 	return 0;
@@ -4889,6 +5032,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
+#ifdef SYNA_POWER_SOURCE_CUST_EN
+	syna_lcm_power_source_ctrl(rmi4_data, 1);
+#endif
 	if (rmi4_data->stay_awake)
 		return 0;
 
@@ -4962,7 +5108,9 @@ static void __exit synaptics_rmi4_exit(void)
 	platform_driver_unregister(&synaptics_rmi4_driver);
 
 	destroy_synaptics_gesture_control();
-
+#ifdef SYNA_POWER_SOURCE_CUST_EN	
+	syna_lcm_bias_power_deinit(syna_rmi4_data);
+#endif
 	synaptics_rmi4_bus_exit();
 
 	return;

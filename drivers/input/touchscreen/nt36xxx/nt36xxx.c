@@ -57,6 +57,126 @@ uint8_t esd_check = false;
 uint8_t esd_retry = 0;
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
+#if NVT_POWER_SOURCE_CUST_EN
+static int nvt_lcm_bias_power_init(struct nvt_ts_data *data)
+{
+	int ret;
+	data->lcm_lab = regulator_get(&data->client->dev, "lcm_lab");
+	if (IS_ERR(data->lcm_lab)){
+		ret = PTR_ERR(data->lcm_lab);
+		NVT_ERR("Regulator get failed lcm_lab ret=%d", ret);
+		goto _end;
+	}
+	if (regulator_count_voltages(data->lcm_lab)>0){
+		ret = regulator_set_voltage(data->lcm_lab, LCM_LAB_MIN_UV, LCM_LAB_MAX_UV);
+		if (ret){
+			NVT_ERR("Regulator set_vtg failed lcm_lab ret=%d", ret);
+			goto reg_lcm_lab_put;
+		}
+	}
+	data->lcm_ibb = regulator_get(&data->client->dev, "lcm_ibb");
+	if (IS_ERR(data->lcm_ibb)){
+		ret = PTR_ERR(data->lcm_ibb);
+		NVT_ERR("Regulator get failed lcm_ibb ret=%d", ret);
+		goto reg_set_lcm_lab_vtg;
+	}
+	if (regulator_count_voltages(data->lcm_ibb)>0){
+		ret = regulator_set_voltage(data->lcm_ibb, LCM_IBB_MIN_UV, LCM_IBB_MAX_UV);
+		if (ret){
+			NVT_ERR("Regulator set_vtg failed lcm_lab ret=%d", ret);
+			goto reg_lcm_ibb_put;
+		}
+	}
+	return 0;
+reg_lcm_ibb_put:
+	regulator_put(data->lcm_ibb);
+	data->lcm_ibb = NULL;
+reg_set_lcm_lab_vtg:
+	if (regulator_count_voltages(data->lcm_lab) > 0){
+		regulator_set_voltage(data->lcm_lab, 0, LCM_LAB_MAX_UV);
+	}
+reg_lcm_lab_put:
+	regulator_put(data->lcm_lab);
+	data->lcm_lab = NULL;
+_end:
+	return ret;
+}
+
+static int nvt_lcm_bias_power_deinit(struct nvt_ts_data *data)
+{
+	if (data-> lcm_ibb != NULL){
+		if (regulator_count_voltages(data->lcm_ibb) > 0){
+			regulator_set_voltage(data->lcm_ibb, 0, LCM_LAB_MAX_UV);
+		}
+		regulator_put(data->lcm_ibb);
+	}
+	if (data-> lcm_lab != NULL){
+		if (regulator_count_voltages(data->lcm_lab) > 0){
+			regulator_set_voltage(data->lcm_lab, 0, LCM_LAB_MAX_UV);
+		}
+		regulator_put(data->lcm_lab);
+	}
+	return 0;
+}
+
+
+static int nvt_lcm_power_source_ctrl(struct nvt_ts_data *data, int enable)
+{
+	int rc;
+
+	if (data->lcm_lab!= NULL && data->lcm_ibb!= NULL){
+		if (enable){
+			if (atomic_inc_return(&(data->lcm_lab_power)) == 1) {
+				rc = regulator_enable(data->lcm_lab);
+				if (rc) {
+					atomic_dec(&(data->lcm_lab_power));
+					NVT_ERR("Regulator lcm_lab enable failed rc=%d", rc);
+				}
+			}
+			else {
+				atomic_dec(&(data->lcm_lab_power));
+			}
+			if (atomic_inc_return(&(data->lcm_ibb_power)) == 1) {
+				rc = regulator_enable(data->lcm_ibb);
+				if (rc) {
+					atomic_dec(&(data->lcm_ibb_power));
+					NVT_ERR("Regulator lcm_ibb enable failed rc=%d", rc);
+				}
+			}
+			else {
+				atomic_dec(&(data->lcm_ibb_power));
+			}
+		}
+		else {
+			if (atomic_dec_return(&(data->lcm_lab_power)) == 0) {
+				rc = regulator_disable(data->lcm_lab);
+				if (rc)
+				{
+					atomic_inc(&(data->lcm_lab_power));
+					NVT_ERR("Regulator lcm_lab disable failed rc=%d", rc);
+				}
+			}
+			else{
+				atomic_inc(&(data->lcm_lab_power));
+			}
+			if (atomic_dec_return(&(data->lcm_ibb_power)) == 0) {
+				rc = regulator_disable(data->lcm_ibb);
+				if (rc)	{
+					atomic_inc(&(data->lcm_ibb_power));
+					NVT_ERR("Regulator lcm_ibb disable failed rc=%d", rc);
+				}
+			}
+			else{
+				atomic_inc(&(data->lcm_ibb_power));
+			}
+		}
+	}
+	else
+		NVT_ERR("Regulator lcm_ibb or lcm_lab is invalid");
+	return 0;
+}
+#endif
+
 #if NVT_TOUCH_EXT_PROC
 extern int32_t nvt_extra_proc_init(void);
 extern void nvt_extra_proc_deinit(void);
@@ -1325,6 +1445,19 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	//---parse dts---
 	nvt_parse_dt(&client->dev);
 
+#if NVT_POWER_SOURCE_CUST_EN
+	atomic_set(&(ts->lcm_lab_power), 0);
+	atomic_set(&(ts->lcm_ibb_power), 0);
+	ret = nvt_lcm_bias_power_init(ts);
+
+	if (ret) {
+		NVT_ERR("power resource init error!\n");
+		goto err_power_resource_init_fail;
+	}
+
+	nvt_lcm_power_source_ctrl(ts, 1);
+#endif
+
 	//---request and config GPIOs---
 	ret = nvt_gpio_config(ts);
 	if (ret) {
@@ -1598,6 +1731,11 @@ err_chipvertrim_failed:
 err_check_functionality_failed:
 	nvt_gpio_deconfig(ts);
 err_gpio_config_failed:
+#ifdef NVT_POWER_SOURCE_CUST_EN
+	nvt_lcm_power_source_ctrl(ts, 0);
+	nvt_lcm_bias_power_deinit(ts);
+#endif	
+err_power_resource_init_fail:
 	i2c_set_clientdata(client, NULL);
 	if (ts) {
 		kfree(ts);
@@ -1746,6 +1884,9 @@ static int32_t nvt_ts_suspend(struct device *dev)
 #if MT_PROTOCOL_B
 	uint32_t i = 0;
 #endif
+#ifdef NVT_POWER_SOURCE_CUST_EN
+	struct nvt_ts_data *data = dev_get_drvdata(dev);
+#endif		
 
 	if (!bTouchIsAwake) {
 		NVT_LOG("Touch is already suspend\n");
@@ -1773,6 +1914,10 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		buf[1] = 0x11;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
 		wake_gestures_en = false;
+#ifdef NVT_POWER_SOURCE_CUST_EN		
+		nvt_lcm_power_source_ctrl(data, 0);
+		NVT_LOG("sleep suspend end  disable vsp/vsn\n");
+#endif	
 		NVT_LOG("Disabled touch wakeup gesture\n");
 	}
 	else {
@@ -1784,6 +1929,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		wake_gestures_en = true;
 		
 		nvt_irq_enable(true);
+		NVT_LOG("gesture suspend end not disable vsp/vsn\n");
 		NVT_LOG("Enabled touch wakeup gesture\n");
 	}
 
@@ -1828,6 +1974,10 @@ return:
 *******************************************************/
 static int32_t nvt_ts_resume(struct device *dev)
 {
+#ifdef NVT_POWER_SOURCE_CUST_EN	
+	struct nvt_ts_data *data = dev_get_drvdata(dev);
+	nvt_lcm_power_source_ctrl(data, 1);//enable vsp/vsn
+#endif
 	if (bTouchIsAwake) {
 		NVT_LOG("Touch is already resume\n");
 		return 0;
@@ -2011,6 +2161,9 @@ return:
 static void __exit nvt_driver_exit(void)
 {
 	destroy_nvt_gesture_control();
+#ifdef NVT_POWER_SOURCE_CUST_EN	
+	nvt_lcm_bias_power_deinit(ts);
+#endif	
 	i2c_del_driver(&nvt_i2c_driver);
 }
 
