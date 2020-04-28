@@ -140,7 +140,9 @@ int commonfp_request_irq(irq_handler_t handler, irq_handler_t thread_fn, unsigne
 		pr_err(KERN_ERR"commonfp request irq failed,error number is %d,irq = %d\n",ret,fp_g.irq_num);
 	}
 
+	enable_irq_wake(fp_g.irq_num);
 	irq_flag = 1;
+	
 	return ret;
 }
 
