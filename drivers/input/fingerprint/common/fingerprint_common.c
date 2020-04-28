@@ -59,13 +59,13 @@ static int pinctrl_select_pin(struct pinctrl *p,char *name)
 
 	if(i == ARRAY_SIZE(fp_g.states))
 	{
-		printk(KERN_ERR"Can not find state %s\n",name);
+		pr_err(KERN_ERR"Can not find state %s\n",name);
 		goto exit;
 	}
 
 	return ret;
 exit:
-	printk(KERN_ERR"Can not select state %s\n",name);
+	pr_err(KERN_ERR"Can not select state %s\n",name);
 	return ret;
 }
 #endif
@@ -75,14 +75,14 @@ int commonfp_power_on()
 	int ret = 0;
 
 	gpio_direction_output(fp_g.pwr_gpio, 1);
-	printk(KERN_INFO"power on OK!!!");
+	pr_debug(KERN_INFO"power on OK!!!");
 	return ret;
 }
 
 int commonfp_power_off()
 {
 
-	printk(KERN_INFO"power off OK 111 !!!");
+	pr_debug(KERN_INFO"power off OK 111 !!!");
 	return 0;
 }
 
@@ -116,10 +116,10 @@ int commonfp_hw_reset(int ms)
 	mdelay(ms);	
 #endif
 
-	printk(KERN_INFO"hw reset success,ret:%d\n",ret);
+	pr_debug(KERN_INFO"hw reset success,ret:%d\n",ret);
 	return ret;
 exit:
-	printk(KERN_ERR"fingerprint_hw_reset failed,ret:%d\n",ret);
+	pr_err(KERN_ERR"fingerprint_hw_reset failed,ret:%d\n",ret);
 	return ret;
 }
 
@@ -132,12 +132,12 @@ int commonfp_request_irq(irq_handler_t handler, irq_handler_t thread_fn, unsigne
 	if(irq_flag == 1)
 	{
 		ret = 0;
-		printk(KERN_INFO"irq has been requested\n");
+		pr_debug(KERN_INFO"irq has been requested\n");
 		return ret;
 	}
 	ret = request_threaded_irq(fp_g.irq_num,handler,thread_fn,flags,name,dev);
 	if(ret){
-		printk(KERN_ERR"commonfp request irq failed,error number is %d,irq = %d\n",ret,fp_g.irq_num);
+		pr_err(KERN_ERR"commonfp request irq failed,error number is %d,irq = %d\n",ret,fp_g.irq_num);
 	}
 
 	irq_flag = 1;
@@ -148,12 +148,12 @@ void commonfp_free_irq(void *dev_id)
 {
 	if(irq_flag == 0)
 	{
-		printk(KERN_INFO"irq has been free\n");
+		pr_debug(KERN_INFO"irq has been free\n");
 		return;
 	}
 	free_irq(fp_g.irq_num,dev_id);
 	irq_flag = 0;
-	printk(KERN_INFO"commonfp free_irq SUCCESS\n");
+	pr_debug(KERN_INFO"commonfp free_irq SUCCESS\n");
 
 }
 
@@ -196,13 +196,13 @@ static int fp_common_probe(struct platform_device *pdev)
 
 	fp_g.pdev = pdev;
 
-	printk(KERN_INFO"fp_common_probe start;");
+	pr_debug(KERN_INFO"fp_common_probe start;");
 
 #if USE_COMMON_PINCTRL
 	fp_g.fp_pinctrl = devm_pinctrl_get(&fp_g.pdev->dev);
 	if(!fp_g.fp_pinctrl)
 	{
-		printk(KERN_ERR"Failed to get common fp pinctrl\n");
+		pr_err(KERN_ERR"Failed to get common fp pinctrl\n");
 		return -1;
 	}
 
@@ -211,7 +211,7 @@ static int fp_common_probe(struct platform_device *pdev)
 		struct pinctrl_state *state;
 		state = pinctrl_lookup_state(fp_g.fp_pinctrl,pinctrl_names[i]);
 		if (IS_ERR(state)) {
-			printk(KERN_ERR"commonfp:cannot find '%s'\n", pinctrl_names[i]);
+			pr_err(KERN_ERR"commonfp:cannot find '%s'\n", pinctrl_names[i]);
 			ret = -EINVAL;
 			return ret;
 		}
@@ -219,9 +219,9 @@ static int fp_common_probe(struct platform_device *pdev)
 		fp_g.states[i] = state;
 		ret = pinctrl_select_state(fp_g.fp_pinctrl,fp_g.states[i]);
 		if(ret){
-			printk(KERN_ERR"can not select state %s\n",pinctrl_names[i]);
+			pr_err(KERN_ERR"can not select state %s\n",pinctrl_names[i]);
 		}else{
-			printk(KERN_ERR"select state %s OK !!!\n",pinctrl_names[i]);
+			pr_debug(KERN_ERR"select state %s OK !!!\n",pinctrl_names[i]);
 		}
 	}
 
@@ -229,15 +229,15 @@ static int fp_common_probe(struct platform_device *pdev)
 
 	ret = pinctrl_select_pin(fp_g.fp_pinctrl,"commonfp_irq_active");
 	if(ret){
-		printk(KERN_ERR"can not select commonfp_irq_active state \n");
+		pr_err(KERN_ERR"can not select commonfp_irq_active state \n");
 	}else{
-		printk(KERN_ERR"select commonfp_irq_active state  OK !!!\n");
+		pr_debug(KERN_ERR"select commonfp_irq_active state  OK !!!\n");
 	}
 
 	fp_g.pwr_gpio = of_get_named_gpio(dev->of_node, "common,gpio_vdd", 0);
 	ret = gpio_request(fp_g.pwr_gpio, "fingerprint_common_power");
 	if(ret) {
-		printk(KERN_ERR"Failed to request pm660l  GPIO(5). err= %d\n",ret);
+		pr_err(KERN_ERR"Failed to request pm660l  GPIO(5). err= %d\n",ret);
 		return -1;
 	}
 
@@ -247,25 +247,25 @@ static int fp_common_probe(struct platform_device *pdev)
 
 	if (!gpio_is_valid(fp_g.rst_gpio))
 	{
-		printk(KERN_ERR"commonfp:get reset gpio is invaild!\n");
+		pr_err(KERN_ERR"commonfp:get reset gpio is invaild!\n");
 		return -1;
 	}
 
 	if (!gpio_is_valid(fp_g.rst_gpio))
 	{
-		printk(KERN_ERR"commonfp:get irq gpio is invaild!\n");
+		pr_err(KERN_ERR"commonfp:get irq gpio is invaild!\n");
 		return -1;
 	}
 
 	ret = devm_gpio_request(dev, fp_g.irq_gpio, "commonfp,gpio_irq");
 	if (ret) {
-		printk(KERN_ERR"failed to request irq gpio %d\n", fp_g.irq_gpio);
+		pr_err(KERN_ERR"failed to request irq gpio %d\n", fp_g.irq_gpio);
 		return -1;
 	}
 
 	ret = devm_gpio_request(dev, fp_g.rst_gpio, "commonfp,gpio_rst");
 	if (ret) {
-		printk(KERN_ERR"failed to request rst gpio %d\n", fp_g.rst_gpio);
+		pr_err(KERN_ERR"failed to request rst gpio %d\n", fp_g.rst_gpio);
 		goto error;
 	}
 
@@ -275,7 +275,7 @@ static int fp_common_probe(struct platform_device *pdev)
 
 	irq_flag = 0;
 
-	printk(KERN_ERR"fp_common_probe probe OK\n");
+	pr_info(KERN_ERR"fp_common_probe probe OK\n");
 
 	return 0;
 
@@ -332,10 +332,10 @@ static int __init fingerprint_resource_init(void)
 	int ret;
 	ret = platform_driver_register(&fingerprint_common);
 	if(ret){
-		printk(KERN_ERR"commonfp:register common fingerprint platform driver failed:%d\n",ret);
+		pr_err(KERN_ERR"commonfp:register common fingerprint platform driver failed:%d\n",ret);
 		return ret;
 	}
-	printk(KERN_INFO"commonfp fingerpint init OK!!!,ret = %d\n",ret);
+	pr_info(KERN_INFO"commonfp fingerpint init OK!!!,ret = %d\n",ret);
 
 	return ret;
 }

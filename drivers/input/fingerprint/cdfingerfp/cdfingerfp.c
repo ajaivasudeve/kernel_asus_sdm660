@@ -98,7 +98,7 @@ struct cdfinger_key_map {
 static int isInKeyMode = 0; // key mode
 static int irq_flag = 0;
 static int screen_status = 1; // screen on
-static u8 cdfinger_debug = 0x01;
+static u8 cdfinger_debug = 0x00;
 #define CDFINGER_DBG(fmt, args...) \
 	do{ \
 		if(cdfinger_debug & 0x01) \
@@ -147,12 +147,12 @@ static int cdfinger_init_gpio(struct cdfingerfp_data *cdfinger)
 	if (gpio_is_valid(cdfinger->pwr_num)) {
 		err = gpio_request(cdfinger->pwr_num, "cdfinger-pwr");
 		if (err) {
-			CDFINGER_DBG("Could not request pwr gpio.\n");
+			CDFINGER_ERR("Could not request pwr gpio.\n");
 			return err;
 		}
 	}
 	else {
-		CDFINGER_DBG("not valid pwr gpio\n");
+		CDFINGER_ERR("not valid pwr gpio\n");
 		return -EIO;
 	}
 
@@ -161,12 +161,12 @@ static int cdfinger_init_gpio(struct cdfingerfp_data *cdfinger)
 		err = gpio_request(cdfinger->reset_num, "cdfinger-reset");
 
 		if (err) {
-			CDFINGER_DBG("Could not request reset gpio.\n");
+			CDFINGER_ERR("Could not request reset gpio.\n");
 			return err;
 		}
 	}
 	else {
-		CDFINGER_DBG("not valid reset gpio\n");
+		CDFINGER_ERR("not valid reset gpio\n");
 		return -EIO;
 	}
 
@@ -174,13 +174,13 @@ static int cdfinger_init_gpio(struct cdfingerfp_data *cdfinger)
 		err = pinctrl_request_gpio(cdfinger->irq_num);
 
 		if (err) {
-			CDFINGER_DBG("Could not request irq gpio.\n");
+			CDFINGER_ERR("Could not request irq gpio.\n");
 			gpio_free(cdfinger->reset_num);
 			return err;
 		}
 	}
 	else {
-		CDFINGER_DBG(KERN_ERR "not valid irq gpio\n");
+		CDFINGER_ERR(KERN_ERR "not valid irq gpio\n");
 		gpio_free(cdfinger->reset_num);
 		return -EIO;
 	}
@@ -427,7 +427,7 @@ static int cdfinger_fb_notifier_callback(struct notifier_block* self,
 		if (isInKeyMode == 0)
 			cdfinger_async_report();
 		mutex_unlock(&g_cdfingerfp_data->buf_lock);
-		printk("sunlin==FB_BLANK_UNBLANK==\n");
+		pr_debug("sunlin==FB_BLANK_UNBLANK==\n");
             break;
         case FB_BLANK_POWERDOWN:
 		mutex_lock(&g_cdfingerfp_data->buf_lock);
@@ -435,7 +435,7 @@ static int cdfinger_fb_notifier_callback(struct notifier_block* self,
 		if (isInKeyMode == 0)
 			cdfinger_async_report();
 		mutex_unlock(&g_cdfingerfp_data->buf_lock);
-		printk("sunlin==FB_BLANK_POWERDOWN==\n");
+		pr_debug("sunlin==FB_BLANK_POWERDOWN==\n");
             break;
         default:
             break;
@@ -453,7 +453,7 @@ static int cdfinger_probe(struct platform_device *pdev)
 	CDFINGER_DBG("cdfinger probe ing\n");
 	status = misc_register(&st_cdfinger_dev);
 	if (status) {
-		CDFINGER_DBG("cdfinger misc register err%d\n",status);
+		CDFINGER_ERR("cdfinger misc register err%d\n",status);
 		return -1;	
 	}
 
@@ -464,7 +464,7 @@ static int cdfinger_probe(struct platform_device *pdev)
 	wake_lock_init(&cdfingerdev->cdfinger_lock, WAKE_LOCK_SUSPEND, "cdfinger wakelock");
 	status=cdfinger_parse_dts(&cdfingerdev->cdfinger_dev->dev, cdfingerdev);
 	if (status != 0) {
-		CDFINGER_DBG("cdfinger parse err %d\n",status);
+		CDFINGER_ERR("cdfinger parse err %d\n",status);
 		goto unregister_dev;	
 	}
 	
@@ -517,13 +517,13 @@ static struct platform_driver cdfinger_driver = {
 
 static int __init cdfinger_fp_init(void)
 {
-	CDFINGER_DBG("cdfinger fp init \n");
+	CDFINGER_ERR("cdfinger fp init \n");
 	return platform_driver_register(&cdfinger_driver);
 }
 
 static void __exit cdfinger_fp_exit(void)
 {
-	CDFINGER_DBG("cdfinger fp exit \n");
+	CDFINGER_ERR("cdfinger fp exit \n");
 	platform_driver_unregister(&cdfinger_driver);
 }
 
