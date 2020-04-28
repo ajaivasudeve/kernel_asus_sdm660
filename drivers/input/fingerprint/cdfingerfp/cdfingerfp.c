@@ -213,11 +213,6 @@ static int cdfinger_free_gpio(struct cdfingerfp_data *cdfinger)
 #endif
 
 	irq_flag = 0;
-#if 0
-	if (gpio_is_valid(cdfinger->pwr_num)) {
-		gpio_free(cdfinger->pwr_num);
-	}
-#endif
 
 	CDFINGER_DBG("%s(..) ok! exit.\n", __FUNCTION__);
 
@@ -228,31 +223,9 @@ static int cdfinger_parse_dts(struct device *dev,struct cdfingerfp_data *cdfinge
 {
 
 	int err = 0;
-	//return err;
 
-#ifdef USE_COMMON_FP
-	
-	/*cdfinger->reset_num = get_reset_gpio_number();
-	cdfinger->irq_num = get_irq_gpio_number();
-
-	if(!gpio_is_valid(cdfinger->reset_num))
-	{
-		CDFINGER_ERR("get commonfp reset gpio failed");
-		return -1;
-	}
-
-	if(!gpio_is_valid(cdfinger->irq_num))
-	{
-		CDFINGER_ERR("get commonfp irq gpio failed");
-		return -1;
-	}*/
-
-
-#else
-	//cdfinger->pwr_num = of_get_named_gpio(dev->of_node, "qcom,pwr-gpio", 0);
 	cdfinger->reset_num = of_get_named_gpio(dev->of_node, "cdfinger,gpio_reset", 0);
 	cdfinger->irq_num = of_get_named_gpio(dev->of_node, "cdfinger,gpio_irq", 0);
-#endif
 
 	CDFINGER_DBG("cdfinger of node reset[%d] irq[%d]\n",cdfinger->reset_num, cdfinger->irq_num);
 
@@ -261,36 +234,11 @@ static int cdfinger_parse_dts(struct device *dev,struct cdfingerfp_data *cdfinge
 
 static int cdfinger_power_on(struct cdfingerfp_data *pdata)
 {
-/*#if 0
-	gpio_direction_output(pdata->pwr_num, 1);
-	mdelay(1);
-#endif
-	int ret;
-	ret = fp_power_on();
-	if(ret)
-	{
-		CDFINGER_ERR("cdfinger power on failed! ret:%d\n",ret);
-		return ret;
-	}
-	msleep(10);
-	gpio_set_value(pdata->reset_num, 1);
-	msleep(10);
-	return 0;
-*/
 	return commonfp_power_on();
 }
 
 static int cdfinger_power_off(struct cdfingerfp_data *pdata)
 {
-/*	int ret;
-	ret = fp_power_off();
-	if(ret)
-	{
-		CDFINGER_ERR("cdfinger power off failed! ret:%d\n",ret);
-		return ret;
-	}
-	return 0;
-*/
 	return commonfp_power_off();
 }
 
@@ -333,38 +281,12 @@ static irqreturn_t cdfinger_eint_handler(int irq, void *dev_id)
 
 static int cdfinger_reset_gpio_init(struct cdfingerfp_data *pdata, int ms)
 {
-/*	gpio_direction_output(pdata->reset_num, 1);
-	mdelay(ms);
-	gpio_set_value(pdata->reset_num, 0);
-	mdelay(ms);
-	gpio_set_value(pdata->reset_num, 1);
-	mdelay(ms);
-*/
 	return commonfp_hw_reset(ms);
 }
 
 static int cdfinger_eint_gpio_init(struct cdfingerfp_data *pdata)
 {
-	/*int error = 0;
-
-	if(irq_flag == 0)
-	{
-		error =request_irq(gpio_to_irq(pdata->irq_num),cdfinger_eint_handler,IRQF_TRIGGER_RISING,"cdfinger_eint", NULL);
-		if (error < 0)
-		{
-			CDFINGER_ERR("cdfinger_eint_gpio_init error----------\n");
-			return error;
-		}
-		irq_flag = 1;
-	}else{
-		CDFINGER_DBG("irq has been requeseted!");
-	}
-		enable_irq_wake(gpio_to_irq(pdata->irq_num));
-		return error;
-*/
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 start */
 	return commonfp_request_irq(cdfinger_eint_handler,NULL, IRQF_TRIGGER_RISING,"cdfinger_eint", (void*)pdata);
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 end */
 }
 
 static void cdfinger_wake_lock(struct cdfingerfp_data *pdata,int arg)
@@ -565,9 +487,6 @@ static int cdfinger_probe(struct platform_device *pdev)
 	
 	cdfingerdev->notifier.notifier_call = cdfinger_fb_notifier_callback;
     	fb_register_client(&cdfingerdev->notifier);
-	//cdfinger_power_on(cdfingerdev);
-	//cdfinger_reset_gpio_init(cdfingerdev, 10);
-	//cdfinger_eint_gpio_init(cdfingerdev);
 	g_cdfingerfp_data = cdfingerdev;
 	return 0;
 unregister_dev:

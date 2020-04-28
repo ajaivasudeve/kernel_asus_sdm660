@@ -38,10 +38,6 @@ static struct of_device_id fp_common_table[] = {
 	{},
 };
 
-
-//init_waitqueue_entry(wait_queue_t * q,struct task_struct * p);
-
-
 #if USE_COMMON_PINCTRL
 static int pinctrl_select_pin(struct pinctrl *p,char *name)
 {
@@ -77,16 +73,6 @@ exit:
 int commonfp_power_on()
 {
 	int ret = 0;
-/*#if USE_COMMON_PINCTRL
-	ret = pinctrl_select_pin(fp_g.fp_pinctrl,"commonfp_power_on");
-	if(ret)
-		goto exit;
-	
-	printk(KERN_INFO"power on OK!!!,ret:%d\n",ret);
-	return ret;
-#endif
-exit:
-	printk(KERN_ERR"power on failed,ret:%d\n",ret);*/
 
 	gpio_direction_output(fp_g.pwr_gpio, 1);
 	printk(KERN_INFO"power on OK!!!");
@@ -95,20 +81,7 @@ exit:
 
 int commonfp_power_off()
 {
-/*	int ret = 0;
-#if USE_COMMON_PINCTRL
-	ret = pinctrl_select_pin(fp_g.fp_pinctrl,"commonfp_power_off");
-	if(ret)
-		goto exit;
-	
-	printk(KERN_INFO"power off OK!!!,ret:%d\n",ret);
-	return ret;
-#endif
-exit:
-	printk(KERN_ERR"power off failed,ret:%d\n",ret);
-	return ret;*/
 
-	//gpio_direction_output(fp_g.pwr_gpio, 0);
 	printk(KERN_INFO"power off OK 111 !!!");
 	return 0;
 }
@@ -150,15 +123,11 @@ exit:
 	return ret;
 }
 
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 start */
 int commonfp_request_irq(irq_handler_t handler, irq_handler_t thread_fn, unsigned long flags,
 	    const char *name, void *dev)
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 end */
 {
 	int ret = -EINVAL;
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 start */
 	if(handler == NULL && thread_fn == NULL)
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 end */
 		return ret;
 	if(irq_flag == 1)
 	{
@@ -166,9 +135,7 @@ int commonfp_request_irq(irq_handler_t handler, irq_handler_t thread_fn, unsigne
 		printk(KERN_INFO"irq has been requested\n");
 		return ret;
 	}
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 start */
 	ret = request_threaded_irq(fp_g.irq_num,handler,thread_fn,flags,name,dev);
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 end */
 	if(ret){
 		printk(KERN_ERR"commonfp request irq failed,error number is %d,irq = %d\n",ret,fp_g.irq_num);
 	}
@@ -207,10 +174,6 @@ void commonfp_irq_disable(void)
 	}
 }
 
-
-/*it has been checked in the probe follow
-	so if ust it,the value is right
-*/
 #if USE_COMMON_PINCTRL
 
 #else
@@ -271,7 +234,6 @@ static int fp_common_probe(struct platform_device *pdev)
 		printk(KERN_ERR"select commonfp_irq_active state  OK !!!\n");
 	}
 
-	//add for 1650 power
 	fp_g.pwr_gpio = of_get_named_gpio(dev->of_node, "common,gpio_vdd", 0);
 	ret = gpio_request(fp_g.pwr_gpio, "fingerprint_common_power");
 	if(ret) {

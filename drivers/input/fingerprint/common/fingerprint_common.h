@@ -13,8 +13,6 @@
 
 #if USE_COMMON_PINCTRL
 static const char * const pinctrl_names[] = {
-	//"commonfp_power_on",
-	//"commonfp_power_off",
 	"commonfp_reset_reset",
 	"commonfp_reset_active",
 	"commonfp_irq_active",
@@ -42,10 +40,8 @@ int get_reset_gpio_number(void);
 int get_irq_gpio_number(void);
 
 int commonfp_hw_reset(int ns);
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 start */
 int commonfp_request_irq(irq_handler_t handler, irq_handler_t thread_fn, unsigned long flags,
 	    const char *name, void *dev);
-/* Huaqin modify for ZQL1650-143 by wangxiang at 2018/02/09 end */
 void commonfp_free_irq(void *dev_id);
 void commonfp_irq_enable(void);
 void commonfp_irq_disable(void);
