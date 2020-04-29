@@ -289,20 +289,6 @@ static int cdfinger_eint_gpio_init(struct cdfingerfp_data *pdata)
 	return commonfp_request_irq(cdfinger_eint_handler,NULL, IRQF_TRIGGER_RISING,"cdfinger_eint", (void*)pdata);
 }
 
-static void cdfinger_wake_lock(struct cdfingerfp_data *pdata,int arg)
-{
-	CDFINGER_DBG("cdfinger_wake_lock enter----------\n");
-	if(arg)
-	{
-		wake_lock(&pdata->cdfinger_lock);
-	}
-	else
-	{
-		wake_unlock(&pdata->cdfinger_lock);
-		wake_lock_timeout(&pdata->cdfinger_lock, msecs_to_jiffies(3000));
-	}
-}
-
 static int cdfinger_report_key(struct cdfingerfp_data *cdfinger, unsigned long arg)
 {
 	key_report_t report;
@@ -352,9 +338,6 @@ static long cdfinger_ioctl(struct file* filp, unsigned int cmd, unsigned long ar
 			break;
 		case CDFINGER_INIT_IRQ:
 			err = cdfinger_eint_gpio_init(cdfinger);
-			break;
-		case CDFINGER_WAKE_LOCK:
-			cdfinger_wake_lock(cdfinger,arg);
 			break;
 		case CDFINGER_RELEASE_DEVICE:
 			cdfinger_free_gpio(cdfinger);
