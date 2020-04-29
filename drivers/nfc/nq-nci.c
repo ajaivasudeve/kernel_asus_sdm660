@@ -46,7 +46,7 @@ static const struct of_device_id msm_match_table[] = {
 MODULE_DEVICE_TABLE(of, msm_match_table);
 
 #define MAX_BUFFER_SIZE			(320)
-#define WAKEUP_SRC_TIMEOUT		(2000)
+#define WAKEUP_SRC_TIMEOUT		(5000)
 #define MAX_RETRY_COUNT			3
 
 struct nqx_dev {
@@ -462,7 +462,6 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 		 * interrupts to avoid spurious notifications to upper
 		 * layers.
 		 */
-		nqx_disable_irq(nqx_dev);
 		dev_dbg(&nqx_dev->client->dev,
 			"gpio_set_value disable: %s: info: %p\n",
 			__func__, nqx_dev);
@@ -514,6 +513,8 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 				return -EBUSY; /* Device or resource busy */
 			}
 		}
+		if (!nqx_dev->irq_enabled)
+			nqx_enable_irq(nqx_dev);
 		gpio_set_value(nqx_dev->en_gpio, 1);
 		usleep_range(10000, 10100);
 		if (gpio_is_valid(nqx_dev->firm_gpio)) {
@@ -638,7 +639,7 @@ static const struct file_operations nfc_dev_fops = {
 };
 
 /* Check for availability of NQ_ NFC controller hardware */
-static int nfcc_hw_check(struct i2c_client *client, struct nqx_dev *nqx_dev)
+static int __maybe_unused nfcc_hw_check(struct i2c_client *client, struct nqx_dev *nqx_dev)
 {
 	int ret = 0;
 
@@ -1068,14 +1069,14 @@ static int nqx_probe(struct i2c_client *client,
 	 * To be efficient we need to test whether nfcc hardware is physically
 	 * present before attempting further hardware initialisation.
 	 *
-	 */
+	 *
 	r = nfcc_hw_check(client, nqx_dev);
 	if (r) {
-		/* make sure NFCC is not enabled */
+		make sure NFCC is not enabled 
 		gpio_set_value(platform_data->en_gpio, 0);
-		/* We don't think there is hardware switch NFC OFF */
+		We don't think there is hardware switch NFC OFF 
 		goto err_request_hw_check_failed;
-	}
+	}*/
 
 	/* Register reboot notifier here */
 	r = register_reboot_notifier(&nfcc_notifier);
