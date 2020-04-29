@@ -123,7 +123,6 @@ typedef struct _totalButtonInformation *pbuttonInformation_t;
 static struct smtc_reg_data sx9310_i2c_reg_setup[] = {
                 {
                 .reg = SX9310_IRQ_ENABLE_REG,
-                .val = 0x70,/*Huaqin modify sarsensor INTreg by chenyijun5 at 2018/03/16*/
                 },
                 {
                 .reg = SX9310_IRQFUNC_REG,
@@ -141,18 +140,14 @@ static struct smtc_reg_data sx9310_i2c_reg_setup[] = {
                 .reg = SX9310_CPS_CTRL3_REG,
                 .val = 0x0E,
                 },
-		/*Huaqin modify sarsensor reg by chenyijun5 at 2018/03/12 start*/
                 {
                 .reg = SX9310_CPS_CTRL4_REG,
                 .val = 0x0D,
                 },
-		/*Huaqin modify sarsensor reg by chenyijun5 at 2018/03/12 end*/
-		/*Huaqin modify sarsensor reg by zhuqiang at 2018/05/10 start*/
                 {
                 .reg = SX9310_CPS_CTRL5_REG,
                 .val = 0x43,
                 },
-		/*Huaqin modify sarsensor reg by zhuqiang at 2018/05/10 end*/
                 {
                 .reg = SX9310_CPS_CTRL6_REG,
                 .val = 0x20,
@@ -161,12 +156,10 @@ static struct smtc_reg_data sx9310_i2c_reg_setup[] = {
                 .reg = SX9310_CPS_CTRL7_REG,
                 .val = 0x4C,
                 },
-		/*Huaqin modify sarsensor reg by chenyijun5 at 2018/03/12 start*/
                 {
                 .reg = SX9310_CPS_CTRL8_REG,
                 .val = 0x80,
                 },
-		/*Huaqin modify sarsensor reg by chenyijun5 at 2018/03/12 end*/
                 {
                 .reg = SX9310_CPS_CTRL9_REG,
                 .val = 0xAE,
@@ -223,12 +216,10 @@ static struct smtc_reg_data sx9310_i2c_reg_setup[] = {
                 .reg = SX9310_SAR_CTRL2_REG,
                 .val = 0x0C,
                 },
-		/*Huaqin modify sarsensor reg by zhuqiang at 2018/05/10 start*/
                 {
                 .reg = SX9310_CPS_CTRL0_REG,
                 .val = 0x21,        //0x51 for cs0
                 },
-		/*Huaqin modify sarsensor reg by zhuqiang at 2018/05/10 end*/
         };
 
 static struct _buttonInfo psmtcButtons[] = {

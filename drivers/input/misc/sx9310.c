@@ -33,28 +33,22 @@
 
 /*power supply VDD 3.3V, VIO 1.8 */
 
-/* Huaqin modify for SAR VDD by chenyijun5 at 2018/02/23 start */
 #define SX9310_VDD_MIN_UV       2800000
 #define SX9310_VDD_MAX_UV       2800000
-/* Huaqin modify for SAR VDD by chenyijun5 at 2018/02/23 end */
 #define SX9310_VDD1_MIN_UV       1800000	/* modify by zch */
 #define SX9310_VDD1_MAX_UV       1800000	/* modify by zch */
 #define SX9310_VIO_MIN_UV       1800000
 #define SX9310_VIO_MAX_UV       1800000
 
-/* Huaqin add sar switcher by chenyijun5 at 2018/03/20 start*/
 bool sar_switcher = 0;//Indonesia set sar_switcher to 1
 module_param(sar_switcher, bool, 0644);
 MODULE_PARM_DESC(sar_switcher, "Control sarsensor open or close.");
-/* Huaqin add sar switcher by chenyijun5 at 2018/03/20 end*/
 
-/* Huaqin add for check hw by zhuqiang at 2018/06/22 start */
 #define SX9310_ID_ERROR 	1
 #define SX9310_I2C_ERROR	2
 #define SX9310_WHOAMI_REG       0x42
 #define SX9310_WHOAMI_VALUE     0x1
 static bool err_flag = 0;
-/* Huaqin add for check hw by zhuqiang at 2018/06/22 end */
 
 /*! \struct sx9310
  * Specialized struct containing input event data, platform data, and
@@ -744,22 +738,17 @@ static struct attribute_group sx9310_attr_group = {
 	.attrs = sx9310_attributes,
 };
 
-/* Huaqin add sar switcher by chenyijun5 at 2018/03/20 start*/
 void sar_switch(bool switcher)
 {
-	/* Huaqin add to report near event when sar switche off by chenyijun5 at 2018/03/22 start*/
 	psx9310_t pDevice = NULL;
 	struct input_dev *input = NULL;
 	struct _buttonInfo *pCurrentButton = NULL;
-    /* Huaqin add for check hw by zhuqiang at 2018/06/22 start */
 	if(err_flag)
 		return;
-    /* Huaqin add for check hw by zhuqiang at 2018/06/22 end */
 
 	pDevice = psx93XX_this->pDevice;
 	pCurrentButton = pDevice->pbuttonInformation->buttons;
 	input = pDevice->pbuttonInformation->input;
-	/* Huaqin add to report near event when sar switche off by chenyijun5 at 2018/03/22 end*/
 
 	if (sar_switcher) {//sar_switcher is 1 for Indonesia, open sarsensor
 		if (switcher) {//switch on
@@ -772,7 +761,6 @@ void sar_switch(bool switcher)
 			disable_irq(psx93XX_this->irq);
 			write_register(psx93XX_this, SX9310_IRQ_ENABLE_REG, 0);
 			write_register(psx93XX_this, SX9310_CPS_CTRL0_REG, 0);
-			/* Huaqin add to report near event when sar switche off by chenyijun5 at 2018/03/22 start*/
 			if (IDLE == pCurrentButton->state) {
 				input_report_key(input, pCurrentButton->keycode0, 1);
 				input_report_key(input, pCurrentButton->keycode0, 0);
@@ -781,7 +769,6 @@ void sar_switch(bool switcher)
 			} else {
 				return;
 			}
-			/* Huaqin add to report near event when sar switche off by chenyijun5 at 2018/03/22 end*/
 		}
 	} else {//other countries, do nothing
 		dev_info(psx93XX_this->pdev, "not Indonesia: do nothing about SAR!\n");
@@ -791,7 +778,6 @@ void sar_switch(bool switcher)
 	return;
 }
 EXPORT_SYMBOL(sar_switch);
-/* Huaqin add sar switcher by chenyijun5 at 2018/03/20 end*/
 
 /*********************************************************************/
 
@@ -1200,7 +1186,6 @@ static ssize_t capsensor_config_write_proc(struct file *filp,
 	return count;
 }
 
-/* Huaqin add for check hw by zhuqiang at 2018/06/22 start */
 /* Failer Index */
 static int sx9310_Hardware_Check(psx93XX_t this)
 {
@@ -1221,7 +1206,6 @@ static int sx9310_Hardware_Check(psx93XX_t this)
 	dev_info(this->pdev, "sx9310 failcode = 0x%x\n",failStatusCode);
 	return failStatusCode;
 }
-/* Huaqin add for check hw by zhuqiang at 2018/06/22 end */
 
 /*! \fn static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *id)
  * \brief Probe function
@@ -1354,12 +1338,10 @@ static int sx9310_probe(struct i2c_client *client,
 			"\t Initialized Device Specific Memory: 0x%p\n",
 			pDevice);
 	
-		/* Huaqin add for check hw by zhuqiang at 2018/06/22 start */
 		if (sx9310_Hardware_Check(this) != 0)
 		{
 			goto error_1;
 		}
-		/* Huaqin add for check hw by zhuqiang at 2018/06/21 end */
 
 
 		if (pDevice) {
@@ -1476,9 +1458,7 @@ error_1:
 	kfree(this);
 error_0:
 	kfree(pplatData);
-	/* Huaqin add for check hw by zhuqiang at 2018/06/22 start */
 	err_flag = 1;
-	/* Huaqin add for check hw by zhuqiang at 2018/06/22 end */
 	return err;
 }
 
