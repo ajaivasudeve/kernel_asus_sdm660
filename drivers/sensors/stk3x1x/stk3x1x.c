@@ -41,31 +41,20 @@
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-//#include <linux/earlysuspend.h>
-#endif
 
 #define DRIVER_VERSION  "3.11.0"
 
 /* Driver Settings */
 #define CONFIG_STK_PS_ALS_USE_CHANGE_THRESHOLD
-/* Huaqin modify for lsensor gain by chenyijun5 at 2018/02/27 start */
 #define STK_ALS_CHANGE_THD		2	/* The threshold to trigger ALS interrupt, unit: lux */
-/* Huaqin modify for lsensor gain by chenyijun5 at 2018/02/27 end */
 #define STK_INT_PS_MODE			1	/* 1, 2, or 3	*/
-/*Huaqin delete for ps INT mode by chenyijun5 at 2018/03/29 start*/
 //#define STK_POLL_PS
-/*Huaqin delete for ps INT mode by chenyijun5 at 2018/03/29 end*/
 #define STK_POLL_ALS		/* ALS interrupt is valid only when STK_INT_PS_MODE = 1	or 4*/
 #define STK_TUNE0
 //#define STK_TUNE1
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #define CALI_PS_EVERY_TIME
 #define CTTRACKING
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
-/*Huaqin delete for redundant logs by chenyijun5 at 2018/03/05 start*/
 //#define STK_DEBUG_PRINTF
-/*Huaqin delete for redundant logs by chenyijun5 at 2018/03/05 end*/
 //#define SPREADTRUM_PLATFORM
 #define STK_ALS_FIR
 // #define STK_IRS
@@ -210,7 +199,6 @@
 /* misc define */
 #define MIN_ALS_POLL_DELAY_NS	60000000
 
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 #ifdef STK_TUNE0
 	#define STK_MAX_MIN_DIFF	37
 	#define STK_LT_N_CT		11
@@ -222,14 +210,11 @@
 #define STK_H_HT		150
 #define STK_H_LT		100
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 
-/* Huaqin add for ZQL1650-1072 by zhuqiang at 2018/04/23 start*/
 bool ps_status_flag = 0;
 bool call_status_flag = 0;
 module_param(call_status_flag, bool, 0660);
 MODULE_PARM_DESC(call_status_flag, "Judgment call status");
-/* Huaqin add for ZQL1650-1072 by zhuqiang at 2018/04/23 end*/
 
 #ifdef STK_TUNE1
 	#define STK_FIN_THD				(2000)
@@ -404,9 +389,7 @@ struct stk3x1x_data {
 	int	int_pin;
 	uint8_t wait_reg;
 	uint8_t int_reg;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	//struct early_suspend stk_early_suspend;
-#endif
+
 	uint16_t ps_thd_h;
 	uint16_t ps_thd_l;
 #ifdef CALI_PS_EVERY_TIME
@@ -453,14 +436,10 @@ struct stk3x1x_data {
 	int stk_lt_n_ct;
 	int stk_ht_n_ct;
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #ifdef CTTRACKING
 	bool ps_thd_update;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 	bool skin_near;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 #ifdef STK_ALS_FIR
 	struct data_filter      fir;
 	atomic_t                firlength;
@@ -522,9 +501,7 @@ static int32_t stk3x1x_set_ps_thd_h(struct stk3x1x_data *ps_data, uint16_t thd_h
 static int32_t stk3x1x_set_als_thd_l(struct stk3x1x_data *ps_data, uint16_t thd_l);
 static int32_t stk3x1x_set_als_thd_h(struct stk3x1x_data *ps_data, uint16_t thd_h);
 static int32_t stk3x1x_get_ir_reading(struct stk3x1x_data *ps_data, int32_t als_it_reduce);
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 static int32_t stk3x1x_get_offset(struct stk3x1x_data *ps_data, int16_t ct);
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 #ifdef STK_TUNE0
 static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data);
 #endif
@@ -792,11 +769,9 @@ static int32_t stk3x1x_init_all_reg(struct stk3x1x_data *ps_data)
 	ps_data->psa = 0x0;
 	ps_data->psi = 0xFFFF;
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #ifdef CTTRACKING
 	ps_data->ps_thd_update = false;
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 	stk3x1x_set_ps_thd_h(ps_data, ps_data->ps_thd_h);
 	stk3x1x_set_ps_thd_l(ps_data, ps_data->ps_thd_l);
 
@@ -1057,17 +1032,9 @@ static int32_t stk3x1x_get_state(struct stk3x1x_data *ps_data)
 
 static void stk_ps_report(struct stk3x1x_data *ps_data, int nf)
 {
-/*
-#ifdef QUALCOMM_PLATFORM
-	ktime_t	timestamp = ktime_get_boottime();
-#endif
-*/
 	ps_data->ps_distance_last = nf;
 	input_report_abs(ps_data->ps_input_dev, ABS_DISTANCE, nf);
 #ifdef QUALCOMM_PLATFORM
-/*	input_event(ps_data->ps_input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
-	input_event(ps_data->ps_input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
-*/
 	input_event(ps_data->ps_input_dev, EV_SYN, SYN_REPORT,0);
 #endif
 	input_sync(ps_data->ps_input_dev);
@@ -1076,17 +1043,9 @@ static void stk_ps_report(struct stk3x1x_data *ps_data, int nf)
 
 static void stk_als_report(struct stk3x1x_data *ps_data, int als)
 {
-/*
-#ifdef QUALCOMM_PLATFORM
-	ktime_t	timestamp = ktime_get_boottime();
-#endif
-*/
 	ps_data->als_lux_last = als;
 	input_report_abs(ps_data->als_input_dev, ABS_MISC, als);
 #ifdef QUALCOMM_PLATFORM
-/*	input_event(ps_data->als_input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
-	input_event(ps_data->als_input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
-*/
 	input_event(ps_data->als_input_dev, EV_SYN, SYN_REPORT,0);
 #endif
 	input_sync(ps_data->als_input_dev);
@@ -1125,7 +1084,6 @@ static uint32_t stk3x1x_get_ges_reading(struct stk3x1x_data *ps_data, unsigned i
 			return err;
 		if(err & STK_FLG_PSDR_MASK)
 			break;
-		//printk(KERN_INFO "ges: not ready, %d\n", retry);
 		retry--;
 		usleep_range(350, 1000);
 	} while(retry > 0);
@@ -1139,7 +1097,6 @@ static uint32_t stk3x1x_get_ges_reading(struct stk3x1x_data *ps_data, unsigned i
 	}
 	*ges0 = (value[0]<<8) | value[1];
 	*ges1 = (value[2]<<8) | value[3];
-	//printk(KERN_INFO "%s: ges=%d,%d\n",__func__, *ges0, *ges1);
 	return 0;
 }
 
@@ -1281,10 +1238,8 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable, u
 	uint32_t reading;
 	int32_t near_far_state;
 
-/* Huaqin add for ZQL1650-1072 by zhuqiang at 2018/04/23 start*/
 	if(!enable)
 		ps_status_flag = 0;
-/* Huaqin add for ZQL1650-1072 by zhuqiang at 2018/04/23 end*/
 #ifdef STK_QUALCOMM_POWER_CTRL
 	if (enable) {
 		ret = stk3x1x_device_ctl(ps_data, enable);
@@ -1315,7 +1270,6 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable, u
 		return 0;
 
 #ifdef STK_TUNE0
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #ifndef CTTRACKING
 	if (!(ps_data->psi_set) && !enable)
 	{
@@ -1330,10 +1284,6 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable, u
 	}
 	if(enable)
 	{
-#ifdef STK_TUNE1
-		// ps_data->ps_thd_h = 0xFFFF;
-		// ps_data->ps_thd_l = 0;
-#endif
 		stk3x1x_set_ps_thd_h(ps_data, ps_data->ps_thd_h + 200);
 		stk3x1x_set_ps_thd_l(ps_data, ps_data->ps_thd_l + 200);
 	}
@@ -1360,9 +1310,7 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable, u
 #ifdef STK_TUNE0
 	#ifdef CTTRACKING
 		ps_data->ps_thd_update = false;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 		ps_data->skin_near = true;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 	#endif
 	#ifdef CALI_PS_EVERY_TIME
 		ps_data->psi_set = 0;
@@ -1457,7 +1405,6 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable, u
 #ifdef CTTRACKING
 		hrtimer_cancel(&ps_data->ps_tune0_timer);
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 #ifdef STK_POLL_PS
 		hrtimer_cancel(&ps_data->ps_timer);
 		cancel_work_sync(&ps_data->stk_ps_work);
@@ -1596,7 +1543,6 @@ static int32_t stk3x1x_get_als_reading(struct stk3x1x_data *ps_data)
 		return ret;
 	}
 	als_data = (value[0]<<8) | value[1];
-	// printk("%s: raw als_data=%d\n", __func__, als_data);
 
 	if(ps_data->p_1x_r_bd_with_co == 0x07 || ps_data->p_19_r_bc == 0x03)
 	{
@@ -1614,8 +1560,6 @@ static int32_t stk3x1x_get_als_reading(struct stk3x1x_data *ps_data)
 			if(ir_data > 0)
 				ps_data->ir_code = ir_data * ir_enlarge;
 #endif
-			// printk(KERN_INFO "%s: als_data=%d, als_code_last=%d,ir_data=%d\n",
-					// __func__, als_data, ps_data->als_code_last, ir_data);
 			if(ir_data > (STK_ALS_THRESHOLD*3))
 			{
 				als_data = ps_data->als_code_last;
@@ -1816,7 +1760,6 @@ static int32_t stk3x1x_get_ir_reading(struct stk3x1x_data *ps_data, int32_t als_
 		goto irs_err_i2c_rw;
 	}
 	word_data = ((value[0]<<8) | value[1]);
-	//printk(KERN_INFO "%s: ir=%d\n", __func__, word_data);
 
 	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client, STK_ALSCTRL_REG, ps_data->alsctrl_reg );
 	if (ret < 0)
@@ -1920,8 +1863,6 @@ static int stk3x1x_validate_n_handle(struct i2c_client *client)
 		if(err < 0)
 			return err;
 
-		//ps_data->psa = 0;
-		//ps_data->psi = 0xFFFF;
 		stk3x1x_set_ps_thd_h(ps_data, ps_data->ps_thd_h);
 		stk3x1x_set_ps_thd_l(ps_data, ps_data->ps_thd_l);
 #ifdef STK_ALS_FIR
@@ -2708,12 +2649,6 @@ static ssize_t stk_all_reg_show(struct device *dev, struct device_attribute *att
 	printk(KERN_INFO "reg[0xE0]=0x%2X\n", ps_reg[cnt]);	
 	len += scnprintf(buf+len, PAGE_SIZE-len, "[3E]%2X,[3F]%2X,[E0]%2X\n", ps_reg[cnt-2], ps_reg[cnt-1], ps_reg[cnt]);
 	return len;
-/*
-    return scnprintf(buf, PAGE_SIZE, "[0]%2X [1]%2X [2]%2X [3]%2X [4]%2X [5]%2X [6/7 HTHD]%2X,%2X [8/9 LTHD]%2X, %2X [A]%2X [B]%2X [C]%2X [D]%2X [E/F Aoff]%2X,%2X,[10]%2X [11/12 PS]%2X,%2X [13]%2X [14]%2X [15/16 Foff]%2X,%2X [17]%2X [18]%2X [3E]%2X [3F]%2X\n",
-		ps_reg[0], ps_reg[1], ps_reg[2], ps_reg[3], ps_reg[4], ps_reg[5], ps_reg[6], ps_reg[7], ps_reg[8],
-		ps_reg[9], ps_reg[10], ps_reg[11], ps_reg[12], ps_reg[13], ps_reg[14], ps_reg[15], ps_reg[16], ps_reg[17],
-		ps_reg[18], ps_reg[19], ps_reg[20], ps_reg[21], ps_reg[22], ps_reg[23], ps_reg[24], ps_reg[25], ps_reg[26]);
-		*/
 }
 
 static ssize_t stk_status_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -2774,7 +2709,7 @@ static ssize_t stk_recv_store(struct device *dev, struct device_attribute *attr,
 		return ret;
 	}
 	recv_data = stk3x1x_i2c_smbus_read_byte_data(ps_data->client,value);
-//	printk("%s: reg 0x%x=0x%x\n", __func__, (int)value, recv_data);
+
 	atomic_set(&ps_data->recv_reg, recv_data);
 	return size;
 }
@@ -3086,10 +3021,8 @@ static int stk_ps_tune_zero_final(struct stk3x1x_data *ps_data)
 	ps_data->psi = ps_data->ps_stat_data[2];
 
 #ifdef CALI_PS_EVERY_TIME
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 	ps_data->ps_high_thd_boot = ps_data->ps_stat_data[1] + ps_data->stk_ht_n_ct;
 	ps_data->ps_low_thd_boot = ps_data->ps_stat_data[1] + ps_data->stk_lt_n_ct;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 	ps_data->ps_thd_h = ps_data->ps_high_thd_boot;
 	ps_data->ps_thd_l = ps_data->ps_low_thd_boot;
 #else
@@ -3181,7 +3114,6 @@ static int stk_ps_tune_zero_init(struct stk3x1x_data *ps_data)
 	return 0;
 }
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/03/13 start*/
 static int32_t stk3x1x_get_offset(struct stk3x1x_data *ps_data, int16_t ct)
 {
 	int ret;
@@ -3213,13 +3145,11 @@ static int32_t stk3x1x_get_offset(struct stk3x1x_data *ps_data, int16_t ct)
 
 	return 0;
 }
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/03/13 end*/
 static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 {
 	int32_t word_data;
 	int ret, diff;
 	unsigned char value[2];
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #ifdef CTTRACKING
 	uint16_t ct_value = 0;
 #endif
@@ -3248,12 +3178,10 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 				word_data = (value[0] << 8) | value[1];
 				if(word_data > 0)
 				{
-				/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 					ret = stk3x1x_get_offset(ps_data, word_data);
 					ct_value = ps_data->ps_thd_h - ps_data->stk_ht_n_ct;
 					//ret = stk3x1x_get_flag(ps_data);
 					if((word_data < ct_value) && ((ct_value - word_data) > 2) && (ps_data->ps_thd_update == false))
-				/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 					{
 						ps_data->ps_thd_h = word_data + ps_data->stk_ht_n_ct;
 						ps_data->ps_thd_l = word_data + ps_data->stk_lt_n_ct;
@@ -3276,13 +3204,11 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 		return 0 ;
 	}
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 	ret = stk3x1x_get_flag(ps_data);
 	if(ret < 0)
 		return ret;
 	if(!(ret&STK_FLG_PSDR_MASK))
 	{
-		//printk(KERN_INFO "%s: ps data is not ready yet\n", __func__);
 		return 0;
 	}
 
@@ -3296,11 +3222,9 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 			return ret;
 		}
 		word_data = (value[0]<<8) | value[1];
-		//printk(KERN_INFO "%s: word_data=%d\n", __func__, word_data);
 
 		if(word_data == 0)
 		{
-			//printk(KERN_ERR "%s: incorrect word data (0)\n", __func__);
 			return 0xFFFF;
 		}
 
@@ -3314,9 +3238,7 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 			ps_data->psi = word_data;
 			printk(KERN_INFO "%s: update psi: psa=%d,psi=%d\n", __func__, ps_data->psa, ps_data->psi);
 		}
-		/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 start*/
 		ret = stk3x1x_get_offset(ps_data, word_data);
-		/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/27 end*/
 	}
 	diff = ps_data->psa - ps_data->psi;
 	if(diff > ps_data->stk_max_min_diff)
@@ -3326,8 +3248,6 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 	#ifdef CALI_PS_EVERY_TIME
 		if(((ps_data->psi + ps_data->stk_ht_n_ct) > (ps_data->ps_thd_h + 500)) && (ps_data->ps_thd_h != 0))
 		{
-		//	ps_data->ps_thd_h = ps_data->ps_thd_h;
-		//	ps_data->ps_thd_l = ps_data->ps_thd_l;
 			printk(KERN_INFO "%s: no update thd, HT=%d, LT=%d\n", __func__, ps_data->ps_thd_h, ps_data->ps_thd_l);
 		}
 		else
@@ -3342,7 +3262,6 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 		printk(KERN_INFO "%s: update thd, HT=%d, LT=%d\n", __func__, ps_data->ps_thd_h, ps_data->ps_thd_l);
 	#endif
 
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 #ifdef CALI_PS_EVERY_TIME
 		if(ps_data->ps_thd_h > (ps_data->ps_high_thd_boot))
 		{
@@ -3351,7 +3270,6 @@ static int stk_ps_tune_zero_func_fae(struct stk3x1x_data *ps_data)
 			printk(KERN_INFO "%s: update boot HT=%d, LT=%d\n", __func__, ps_data->ps_high_thd_boot, ps_data->ps_low_thd_boot);
 		}
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 		stk3x1x_set_ps_thd_h(ps_data, ps_data->ps_thd_h);
 		stk3x1x_set_ps_thd_l(ps_data, ps_data->ps_thd_l);
 
@@ -3449,14 +3367,11 @@ static int stk_tune1_get_ct(uint32_t ps)
 	if(ps > ps_get_ct.psa)
 		ps_get_ct.psa = ps;
 
-	// if(ps_get_ct.psa - ps_get_ct.psi > STK_CT_UPDATE_DIFF)
-	// {
-		if(stk_tune1_check_stable(ps_get_ct.ps_val, STK_PS_VAL_BUF, PS_NOISE, &ps_max, &ps_min) == 1)
-		{
-			stk_tune1_reset_para();
-			return ps_min;
-		}
-	// }
+	if(stk_tune1_check_stable(ps_get_ct.ps_val, STK_PS_VAL_BUF, PS_NOISE, &ps_max, &ps_min) == 1)
+	{
+		stk_tune1_reset_para();
+		return ps_min;
+	}
 	return -1;
 }
 
@@ -3489,13 +3404,11 @@ static int stk_tune1_ct_det(struct stk3x1x_data *ps_data, uint32_t ps)
 #else
 			stk3x1x_set_ps_thd_l(ps_data, 0);
 #endif
-			// update_thd += STK_THD_F_PS0_CT_OK;
 			printk("%s: HT=%d,LT=%d\n", __func__, ps_data->ps_thd_h, ps_data->ps_thd_l);
 			return 1;
 		}
 		else
 		{
-			// update_thd = STK_THD_F_PS0_CT_NG;
 			printk("%s: ct>STK_PS_CT_LIMIT,keep HT/LT\n", __func__);
 			return 2;
 		}
@@ -3566,17 +3479,9 @@ static void stk_als_poll_work_func(struct work_struct *work)
 #endif
 
 #ifdef STK_GES
-	#ifdef QUALCOMM_PLATFORM
-//	ktime_t	timestamp = ktime_get_boottime();
-	#endif
 	if(ps_data->ges_enabled)
 	{
 		input_report_abs(ps_data->als_input_dev, ABS_MISC, ps_data->als_lux_last);
-	#ifdef QUALCOMM_PLATFORM
-/*		input_event(ps_data->als_input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
-		input_event(ps_data->als_input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
-*/
-	#endif
 		input_sync(ps_data->als_input_dev);
 	#ifdef STK_DEBUG_PRINTF
 		printk(KERN_INFO "%s: ges_enabled=1, als input event %d lux\n",__func__, ps_data->als_lux_last);
@@ -3590,7 +3495,6 @@ static void stk_als_poll_work_func(struct work_struct *work)
 		return;
 	if(!(flag_reg&STK_FLG_ALSDR_MASK))
 	{
-		//printk(KERN_INFO "%s: als is not ready\n", __func__);
 		return;
 	}
 
@@ -3603,7 +3507,6 @@ static void stk_als_poll_work_func(struct work_struct *work)
 	reading = stk3x1x_get_als_reading(ps_data);
 	if(reading < 0)
 		return;
-	// printk("%s: als_data_index=%d, als_data=%d\n", __func__, ps_data->als_data_index, reading);
 #ifdef STK_IRS
 	stk_als_ir_get_corr(ps_data, reading);
 	reading = reading * ps_data->als_correct_factor / 1000;
@@ -3635,21 +3538,15 @@ static void stk_ps_poll_work_func(struct work_struct *work)
 	uint32_t reading;
 	int32_t near_far_state;
 	uint8_t org_flag_reg;
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 start*/
 
 	if(ps_data->ps_enabled)
 	{
-#ifdef STK_TUNE0
-		// if(!(ps_data->psi_set))
-			// return;
-#endif
 		org_flag_reg = stk3x1x_get_flag(ps_data);
 		if(org_flag_reg < 0)
 			return;
 
 		if(!(org_flag_reg&STK_FLG_PSDR_MASK))
 		{
-			//printk(KERN_INFO "%s: ps is not ready\n", __func__);
 			return;
 		}
 
@@ -3664,7 +3561,6 @@ static void stk_ps_poll_work_func(struct work_struct *work)
 	}
 }
 #endif
-/*Huaqin modify for psensor near/far threshold by chenyijun5 at 2018/02/11 end*/
 #if (!defined(STK_POLL_PS) || !defined(STK_POLL_ALS))
 
 #ifdef STK_TUNE1
@@ -3780,7 +3676,6 @@ static void stk_ps_int_handle_int_mode_2_3(struct stk3x1x_data *ps_data)
 }
 #endif
 
-/* Huaqin add for ZQL1650-1072 by zhuqiang at 2018/04/23 start*/
 int tp_status_fun(void)
 {
 	return (call_status_flag & ps_status_flag);
@@ -3795,7 +3690,6 @@ static void stk_ps_int_handle(struct stk3x1x_data *ps_data, uint32_t ps_reading,
 	stk_ps_report(ps_data, nf_state);
 	printk(KERN_INFO "%s: ps input event=%d, ps code=%d\n",__func__, nf_state, ps_reading);
 }
-/* Huaqin add ZQL1650-1072 by zhuqiang at 2018/04/23 end*/
 
 #endif	// #ifdef STK_TUNE1
 
@@ -3826,7 +3720,6 @@ static int stk_als_int_handle(struct stk3x1x_data *ps_data, uint32_t als_reading
 			else
 				ps_data->als_correct_factor = 1000;
 		}
-		// printk(KERN_INFO "%s: als=%d, ir=%d, als_correct_factor=%d", __func__, als_reading, ps_data->ir_code, ps_data->als_correct_factor);
 		ps_data->ir_code = 0;
 	}
 
@@ -3850,11 +3743,9 @@ static void stk_work_func(struct work_struct *work)
 #endif	/* #if ((STK_INT_PS_MODE != 0x03) && (STK_INT_PS_MODE != 0x02)) */
 	struct stk3x1x_data *ps_data = container_of(work, struct stk3x1x_data, stk_work);
 	uint32_t reading;
-/*Huaqin add for ps INT mode by chenyijun5 at 2018/03/29 start*/
 #ifdef CTTRACKING
 	int err;
 #endif
-/*Huaqin add for ps INT mode by chenyijun5 at 2018/03/29 end*/
 #if ((STK_INT_PS_MODE == 0x03) || (STK_INT_PS_MODE == 0x02))
 	stk_ps_int_handle_int_mode_2_3(ps_data);
 #else
@@ -3890,7 +3781,6 @@ static void stk_work_func(struct work_struct *work)
 #else
 		near_far_state = (org_flag_reg & STK_FLG_NF_MASK)?1:0;
 
-/*Huaqin add for ps INT mode by chenyijun5 at 2018/03/29 start*/
 #ifdef CTTRACKING
 		if(near_far_state == 0){
 			if((reading > (ps_data->psi + STK_H_PS))&&ps_data->skin_near) {
@@ -3931,7 +3821,6 @@ static void stk_work_func(struct work_struct *work)
 			}
 		}
 #endif
-/*Huaqin add for ps INT mode by chenyijun5 at 2018/03/29 end*/
 
 		stk_ps_int_handle(ps_data, reading, near_far_state);
 #endif
@@ -4042,7 +3931,6 @@ static int32_t stk3x1x_init_all_setting(struct i2c_client *client, struct stk3x1
 #ifdef STK_GES
 	ps_data->re_enable_ges = 0;
 	atomic_set(&ps_data->gesture2, 0);
-	//memset(stk_ges_op, 0, sizeof(stk_ges_op));
 #endif
 #ifdef STK_IRS
 	ps_data->als_data_index = 0;
@@ -4081,7 +3969,6 @@ static int stk3x1x_setup_irq(struct i2c_client *client)
 		printk(KERN_ERR "%s: gpio_request, err=%d", __func__, err);
 		return err;
 	}
-	// gpio_tlmm_config(GPIO_CFG(ps_data->int_pin, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
 
 	err = gpio_direction_input(ps_data->int_pin);
 	if(err < 0)
@@ -4611,12 +4498,7 @@ static int stk3x1x_set_input_devices(struct stk3x1x_data *ps_data)
 	set_bit(KEY_PAGEDOWN, ps_data->ges_input_dev->keybit);
 	set_bit(KEY_VOLUMEUP, ps_data->ges_input_dev->keybit);
 	set_bit(KEY_VOLUMEDOWN, ps_data->ges_input_dev->keybit);
-	/*
-	set_bit(KEY_LEFT, ps_data->ges_input_dev->keybit);
-	set_bit(KEY_RIGHT, ps_data->ges_input_dev->keybit);
-	set_bit(KEY_UP, ps_data->ges_input_dev->keybit);
-	set_bit(KEY_DOWN, ps_data->ges_input_dev->keybit);
-	*/
+
 	err = input_register_device(ps_data->ges_input_dev);
 	if (err<0)
 	{
@@ -4639,7 +4521,6 @@ static int stk3x1x_set_input_devices(struct stk3x1x_data *ps_data)
 err_ges_sysfs_create:
 	input_unregister_device(ps_data->ges_input_dev);
 err_ges_input_register:
-	// input_free_device(ps_data->ges_input_dev);
 err_ges_input_allocate:
 #endif
 	sysfs_remove_group(&ps_data->ps_input_dev->dev.kobj, &stk_ps_attribute_group);
