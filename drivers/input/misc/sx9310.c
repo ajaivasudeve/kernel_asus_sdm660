@@ -139,7 +139,7 @@ static void sx93XX_process_interrupt(psx93XX_t this, u8 nirqlow)
 		cancel_delayed_work(&this->dworker);
 		schedule_delayed_work(&this->dworker,
 				      msecs_to_jiffies(this->irqTimeout));
-		dev_info(this->pdev, "Schedule Irq timer");
+		dev_dbg(this->pdev, "Schedule Irq timer");
 	}
 }
 
@@ -365,10 +365,10 @@ int sx93XX_init(psx93XX_t this)
 			return err;
 		}
 #ifdef USE_THREADED_IRQ
-		dev_info(this->pdev, "registered with threaded irq (%d)\n",
+		dev_dbg(this->pdev, "registered with threaded irq (%d)\n",
 			 this->irq);
 #else
-		dev_info(this->pdev, "registered with irq (%d)\n", this->irq);
+		dev_dbg(this->pdev, "registered with irq (%d)\n", this->irq);
 #endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -435,7 +435,7 @@ static int write_register(psx93XX_t this, u8 address, u8 value)
 	}
 	if (returnValue < 0) {
 		ForcetoTouched(this);
-		dev_info(this->pdev, "Write_register-ForcetoTouched()\n");
+		dev_dbg(this->pdev, "Write_register-ForcetoTouched()\n");
 	}
 
 	return returnValue;
@@ -467,7 +467,7 @@ static int read_register(psx93XX_t this, u8 address, u8 *value)
 	}
 
 	ForcetoTouched(this);
-	dev_info(this->pdev, "read_register-ForcetoTouched()\n");
+	dev_dbg(this->pdev, "read_register-ForcetoTouched()\n");
 	return -ENOMEM;
 }
 
@@ -496,7 +496,7 @@ void sar_int_config(int state, struct pinctrl * pin)
 		pr_err("[sx9310 error]  sarsensor pinctrl set  state error!");
 		return;
 	}
-	pr_info("[sx9301 ]  sarsensor pinctrl set  state sucess!");
+	pr_debug("[sx9301 ]  sarsensor pinctrl set  state sucess!");
 }
 
 /*********************************************************************/
@@ -539,7 +539,7 @@ static ssize_t manual_offset_calibration_store(struct device *dev,
 	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 	if (val) {
-		dev_info(this->pdev,
+		dev_dbg(this->pdev,
 			 "Performing manual_offset_calibration()\n");
 		if (this->init)
 			this->init(this);
@@ -576,7 +576,7 @@ static ssize_t sx9310_enable_store(struct device *dev,
 
 	if (val) {
 		if (!sx9310_enable && this) {
-			dev_info(this->pdev, "going to enable sx9310.\n");
+			dev_dbg(this->pdev, "going to enable sx9310.\n");
 			err = sx9310_power_ctl(this, true);
 			err = sx9310_power_vdd1_ctl(this, true);
 			if (err) {
@@ -597,12 +597,12 @@ static ssize_t sx9310_enable_store(struct device *dev,
 			enable_irq(this->irq);
 		} else {
 			if (this)
-				dev_info(this->pdev,
+				dev_dbg(this->pdev,
 					 "sx9310 has already enabled.\n");
 		}
 	} else {
 		if (sx9310_enable && this) {
-			dev_info(this->pdev, "going to disable sx9310.\n");
+			dev_dbg(this->pdev, "going to disable sx9310.\n");
 			disable_irq(this->irq);
 
 			err = sx9310_power_ctl(this, false);
@@ -613,7 +613,7 @@ static ssize_t sx9310_enable_store(struct device *dev,
 			}
 		} else {
 			if (this)
-				dev_info(this->pdev,
+				dev_dbg(this->pdev,
 					 "sx9310 has already disabled.\n");
 		}
 	}
@@ -639,7 +639,7 @@ static ssize_t sx9310_register_write_store(struct device *dev,
 	}
 
 	write_register(this, (unsigned char)regist, (unsigned char)val);
-	pr_info("[SX9310]: %s - Register(0x%x) data(0x%x)\n",
+	pr_debug("[SX9310]: %s - Register(0x%x) data(0x%x)\n",
 		__func__, regist, val);
 
 	return count;
@@ -752,12 +752,12 @@ void sar_switch(bool switcher)
 
 	if (sar_switcher) {//sar_switcher is 1 for Indonesia, open sarsensor
 		if (switcher) {//switch on
-			dev_info(psx93XX_this->pdev, "Indonesia: going to enable SAR!\n");
+			dev_dbg(psx93XX_this->pdev, "Indonesia: going to enable SAR!\n");
 			write_register(psx93XX_this, SX9310_IRQ_ENABLE_REG, 0x70);
 			write_register(psx93XX_this, SX9310_CPS_CTRL0_REG, 0x51);
 			enable_irq(psx93XX_this->irq);
 		} else {//switch off
-			dev_info(psx93XX_this->pdev, "Indonesia: going to disable SAR!\n");
+			dev_dbg(psx93XX_this->pdev, "Indonesia: going to disable SAR!\n");
 			disable_irq(psx93XX_this->irq);
 			write_register(psx93XX_this, SX9310_IRQ_ENABLE_REG, 0);
 			write_register(psx93XX_this, SX9310_CPS_CTRL0_REG, 0);
@@ -771,7 +771,7 @@ void sar_switch(bool switcher)
 			}
 		}
 	} else {//other countries, do nothing
-		dev_info(psx93XX_this->pdev, "not Indonesia: do nothing about SAR!\n");
+		dev_dbg(psx93XX_this->pdev, "not Indonesia: do nothing about SAR!\n");
 		return;
 	}
 
@@ -825,7 +825,7 @@ static void hw_init(psx93XX_t this)
 		dev_err(this->pdev, "ERROR! platform data 0x%p\n", pDevice->hw);
 		/* Force to touched if error */
 		ForcetoTouched(this);
-		dev_info(this->pdev, "Hardware_init-ForcetoTouched()\n");
+		dev_dbg(this->pdev, "Hardware_init-ForcetoTouched()\n");
 	}
 }
 
@@ -914,7 +914,7 @@ static void touchProcess(psx93XX_t this)
 				if (((i & pCurrentButton->mask) ==
 				     pCurrentButton->mask)) {
 					/* User pressed button */
-					dev_info(this->pdev,
+					dev_dbg(this->pdev,
 						 "cap button %d touched\n",
 						 counter);
 					/*
@@ -935,7 +935,7 @@ static void touchProcess(psx93XX_t this)
 				if (((i & pCurrentButton->mask) !=
 				     pCurrentButton->mask)) {
 					/* User released button */
-					dev_info(this->pdev,
+					dev_dbg(this->pdev,
 						 "cap button %d released\n",
 						 counter);
 					/*
@@ -970,7 +970,7 @@ static int sx9310_get_nirq_state(void)
 		pr_err("sx9310 irq_gpio was not assigned properly");
 	}
 	value = gpio_get_value(PSX9310Device->hw->irq_gpio);
-	pr_info("sx9310 irq gpio status(%d)", value);
+	pr_debug("sx9310 irq gpio status(%d)", value);
 	return !value;
 }
 
@@ -1028,7 +1028,7 @@ static int sx9310_power_ctl(sx93XX_t *data, bool on)
 		msleep(10);	/* wait 10ms */
 		data->power_enabled = on;
 	} else {
-		pr_info("Power on=%d. enabled=%d\n", on, data->power_enabled);
+		pr_debug("Power on=%d. enabled=%d\n", on, data->power_enabled);
 	}
 
 	return ret;
@@ -1148,7 +1148,7 @@ static ssize_t capsensor_config_write_proc(struct file *filp,
 	if (sscanf(buffer, "%u", &val) != 1)
 		return -EINVAL;
 
-	pr_info("%s val = %u\n", __func__, val);
+	pr_debug("%s val = %u\n", __func__, val);
 	if (val) {
 		if (!sx9310_enable && psx93XX_this) {
 #ifdef USE_THREADED_IRQ
@@ -1169,7 +1169,7 @@ static ssize_t capsensor_config_write_proc(struct file *filp,
 			write_register(psx93XX_this, 0x00, 0xff);
 		} else {
 			if (psx93XX_this)
-				pr_info("sx9310 has already enabled.\n");
+				pr_debug("sx9310 has already enabled.\n");
 		}
 	} else {
 		if (sx9310_enable && psx93XX_this) {
@@ -1177,7 +1177,7 @@ static ssize_t capsensor_config_write_proc(struct file *filp,
 			write_register(psx93XX_this, 0x10, 0x50);
 		} else {
 			if (psx93XX_this)
-				pr_info("sx9310 has already disabled.\n");
+				pr_debug("sx9310 has already disabled.\n");
 		}
 	}
 
@@ -1203,7 +1203,7 @@ static int sx9310_Hardware_Check(psx93XX_t this)
 		failStatusCode = SX9310_ID_ERROR;
 	}
 
-	dev_info(this->pdev, "sx9310 failcode = 0x%x\n",failStatusCode);
+	dev_dbg(this->pdev, "sx9310 failcode = 0x%x\n",failStatusCode);
 	return failStatusCode;
 }
 
@@ -1224,7 +1224,7 @@ static int sx9310_probe(struct i2c_client *client,
 	/* s32 returnValue = 0; */
 	struct input_dev *input = NULL;
 
-	printk("zch sar---in sx9310_probe\n");
+	pr_info("zch sar---in sx9310_probe\n");
 	dev_dbg(&client->dev, "sx9310_probe()\n");
 
 	/* pplatData = &sx9310_config; */
@@ -1418,15 +1418,15 @@ static int sx9310_probe(struct i2c_client *client,
 		}
 #if 0
 		read_register(this, SX9310_IRQSTAT_TOUCH_FLAG, &reg_value);
-		pr_info("read SX9310_IRQSTAT_TOUCH_FLAG is 0x%x\n", reg_value);
+		pr_debug("read SX9310_IRQSTAT_TOUCH_FLAG is 0x%x\n", reg_value);
 
 		returnValue = write_register(this, SX9310_CPS_CTRL18_REG, 0x20);
 		read_register(this, SX9310_CPS_CTRL18_REG, &reg_value);
-		pr_info("read SX9310_CPS_CTRL18_REG is 0x%x\n", reg_value);
+		pr_debug("read SX9310_CPS_CTRL18_REG is 0x%x\n", reg_value);
 
 		returnValue = write_register(this, SX9310_CPS_CTRL19_REG, 0xFF);
 		read_register(this, SX9310_CPS_CTRL19_REG, &reg_value);
-		pr_info("read SX9310_CPS_CTRL19_REG is 0x%x\n", reg_value);
+		pr_debug("read SX9310_CPS_CTRL19_REG is 0x%x\n", reg_value);
 #endif
 		sx93XX_init(this);
 
@@ -1442,13 +1442,13 @@ static int sx9310_probe(struct i2c_client *client,
 		    proc_create(PROC_CAPSENSOR_FILE, 0660, NULL,
 				&config_proc_ops);
 		if (capsensor_proc == NULL) {
-			pr_info("create_proc_entry %s failed\n",
+			pr_debug("create_proc_entry %s failed\n",
 				PROC_CAPSENSOR_FILE);
 		} else {
-			pr_info("create proc entry %s success",
+			pr_debug("create proc entry %s success",
 				PROC_CAPSENSOR_FILE);
 		}
-		printk("zch sar---sx9310_probe success\n");
+		pr_info("zch sar---sx9310_probe success\n");
 
 		return 0;
 	}
@@ -1498,7 +1498,7 @@ static int sx9310_suspend(struct i2c_client *client, pm_message_t mesg)
 	if (sx9310_enable)
 		sx93XX_suspend(this);
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -1509,7 +1509,7 @@ static int sx9310_resume(struct i2c_client *client)
 
 	if (sx9310_enable)
 		sx93XX_resume(this);
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -1545,13 +1545,13 @@ static struct i2c_driver sx9310_driver = {
 
 static int __init sx9310_init(void)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return i2c_add_driver(&sx9310_driver);
 }
 
 static void __exit sx9310_exit(void)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	i2c_del_driver(&sx9310_driver);
 }
 
