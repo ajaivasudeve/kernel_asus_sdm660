@@ -3676,7 +3676,7 @@ static void stk_ps_int_handle_int_mode_2_3(struct stk3x1x_data *ps_data)
 }
 #endif
 
-int tp_status_fun(void)
+int __maybe_unused tp_status_fun(void)
 {
 	return (call_status_flag & ps_status_flag);
 }
