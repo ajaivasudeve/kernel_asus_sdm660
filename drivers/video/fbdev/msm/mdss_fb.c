@@ -1691,6 +1691,7 @@ static int mdss_fb_pm_resume(struct device *dev)
 	rc = mdss_fb_resume_sub(mfd);
 
 	if (mfd->index == 0 && !mfd->early_unblank_work_queued) {
+		input_boost_max_kick(1000);
 		queue_work(wq, &mfd->early_unblank_work);
 		mfd->early_unblank_work_queued = true;
 	}
