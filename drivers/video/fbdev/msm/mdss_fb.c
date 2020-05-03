@@ -55,6 +55,11 @@
 #include "mdss_debug.h"
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
+#include <linux/wakelock.h>
+
+static struct wake_lock early_unblank_wakelock;
+static void lcd_early_unblank(struct work_struct *);
+static struct workqueue_struct *wq;
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -103,6 +108,7 @@ static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			     struct fb_info *info);
 static int mdss_fb_set_par(struct fb_info *info);
+static int mdss_fb_blank(int blank_mode, struct fb_info *info);
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable);
 static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd);
@@ -1395,8 +1401,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		if (mdss_fb_register_input_handler(mfd))
 			pr_err("failed to register input handler\n");
 
+	INIT_WORK(&mfd->early_unblank_work, lcd_early_unblank);
+	mfd->early_unblank_work_queued = false;
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
-
 	return rc;
 }
 
@@ -1606,6 +1613,29 @@ static int mdss_fb_resume(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_PM_SLEEP
+static void lcd_early_unblank(struct work_struct *work)
+{
+	struct work_struct *wrk;
+	struct msm_fb_data_type *mfd = container_of(wrk, struct msm_fb_data_type,
+			early_unblank_work);
+	struct fb_info *fbi;
+
+	if (!mfd) {
+		pr_err("[Display] cannot get mfd from work\n");
+		return;
+	}
+
+	fbi = mfd->fbi;
+	if (!fbi)
+		return;
+
+	wake_lock_timeout(&early_unblank_wakelock,msecs_to_jiffies(300));
+	
+	fb_blank(fbi, FB_BLANK_UNBLANK);
+
+	mfd->early_unblank_work_queued = false;
+}
+
 static int mdss_fb_pm_suspend(struct device *dev)
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(dev);
@@ -1638,6 +1668,8 @@ static int mdss_fb_pm_suspend(struct device *dev)
 static int mdss_fb_pm_resume(struct device *dev)
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(dev);
+	int rc;
+
 	if (!mfd)
 		return -ENODEV;
 
@@ -1655,7 +1687,14 @@ static int mdss_fb_pm_resume(struct device *dev)
 	if (mfd->mdp.footswitch_ctrl)
 		mfd->mdp.footswitch_ctrl(true);
 
-	return mdss_fb_resume_sub(mfd);
+	rc = mdss_fb_resume_sub(mfd);
+
+	if (mfd->index == 0 && !mfd->early_unblank_work_queued) {
+		queue_work(wq, &mfd->early_unblank_work);
+		mfd->early_unblank_work_queued = true;
+	}
+
+	return rc;
 }
 #endif
 
@@ -5229,6 +5268,8 @@ int __init mdss_fb_init(void)
 	if (platform_driver_register(&mdss_fb_driver))
 		return rc;
 
+	wq = alloc_workqueue("unblank_wq", WQ_HIGHPRI | WQ_UNBOUND, 0);
+	wake_lock_init(&early_unblank_wakelock, WAKE_LOCK_SUSPEND, "early_unblank-update");
 	return 0;
 }
 
