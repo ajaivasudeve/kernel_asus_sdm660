@@ -205,7 +205,7 @@ static void do_input_boost(struct work_struct *work)
 	/* Update policies for all online CPUs */
 	update_policy_online();
 
-	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
+	queue_delayed_work(system_power_efficient_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
 }
 
@@ -232,7 +232,7 @@ static void do_input_boost_max(unsigned int duration_ms)
 
 	update_policy_online();
 
-	queue_delayed_work(cpu_boost_wq,
+	queue_delayed_work(system_power_efficient_wq,
 		&input_boost_rem, msecs_to_jiffies(duration_ms));
 
 	max_boost_active = true;

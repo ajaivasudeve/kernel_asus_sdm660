@@ -4321,7 +4321,7 @@ exit:
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
 
 	if (rebuild && synaptics_rmi4_do_rebuild(rmi4_data)) {
-		queue_delayed_work(rmi4_data->rb_workqueue,
+		queue_delayed_work(system_power_efficient_wq,
 				&rmi4_data->rb_work,
 				msecs_to_jiffies(REBUILD_WORK_DELAY_MS));
 	}
@@ -4476,7 +4476,7 @@ exit:
 	mutex_unlock(&exp_data.mutex);
 
 	if (exp_data.queue_work) {
-		queue_delayed_work(exp_data.workqueue,
+		queue_delayed_work(system_power_efficient_wq,
 				&exp_data.work,
 				msecs_to_jiffies(EXP_FN_WORK_DELAY_MS));
 	}
@@ -4676,7 +4676,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&exp_data.work, synaptics_rmi4_exp_fn_work);
 	exp_data.rmi4_data = rmi4_data;
 	exp_data.queue_work = true;
-	queue_delayed_work(exp_data.workqueue,
+	queue_delayed_work(system_power_efficient_wq,
 			&exp_data.work,
 			0);
 

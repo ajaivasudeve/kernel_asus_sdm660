@@ -1107,7 +1107,7 @@ static void nvt_esd_check_func(struct work_struct *work)
 		esd_retry++;
 	}
 
-	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+	queue_delayed_work(system_power_efficient_wq, &nvt_esd_check_work,
 			msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
 }
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
@@ -1595,7 +1595,7 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	}
 	INIT_DELAYED_WORK(&ts->nvt_fwu_work, Boot_Update_Firmware);
 	// please make sure boot update start after display reset(RESX) sequence
-	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work, msecs_to_jiffies(14000));
+	queue_delayed_work(system_power_efficient_wq, &ts->nvt_fwu_work, msecs_to_jiffies(14000));
 #endif
 
 	NVT_LOG("NVT_TOUCH_ESD_PROTECT is %d\n", NVT_TOUCH_ESD_PROTECT);
@@ -1607,7 +1607,7 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 		ret = -ENOMEM;
 		goto err_create_nvt_esd_check_wq_failed;
 	}
-	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+	queue_delayed_work(system_power_efficient_wq, &nvt_esd_check_work,
 			msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
@@ -2006,7 +2006,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 
 #if NVT_TOUCH_ESD_PROTECT
 	nvt_esd_check_enable(false);
-	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+	queue_delayed_work(system_power_efficient_wq, &nvt_esd_check_work,
 			msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
