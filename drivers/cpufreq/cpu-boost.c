@@ -29,6 +29,8 @@ struct cpu_sync {
 	unsigned int input_boost_freq;
 };
 
+extern bool st_cpu_bias;
+
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
 static struct workqueue_struct *cpu_boost_wq;
 
@@ -169,6 +171,9 @@ static void do_input_boost_rem(struct work_struct *work)
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
 
+	if (st_cpu_bias)
+		st_cpu_bias = false;
+
 	/* Reset the input_boost_min for all CPUs in the system */
 	pr_debug("Resetting input boost min for all CPUs\n");
 	for_each_possible_cpu(i) {
@@ -216,6 +221,9 @@ void mdss_boost_kick()
 		return;
 	}
 
+	if (!st_cpu_bias)
+		st_cpu_bias = true;
+
 	queue_work(cpu_boost_wq, &input_boost_work);
 }
 
@@ -244,6 +252,9 @@ void input_boost_max_kick(unsigned int duration_ms)
 		return;
 	}
 	
+	if (!st_cpu_bias)
+		st_cpu_bias = true;
+
 	do_input_boost_max(duration_ms);
 }
 
@@ -257,6 +268,9 @@ static void cpuboost_input_event(struct input_handle *handle,
 
 	if (work_pending(&input_boost_work))
 		return;
+
+	if (!st_cpu_bias)
+		st_cpu_bias = true;
 
 	queue_work(cpu_boost_wq, &input_boost_work);
 }
