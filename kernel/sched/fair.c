@@ -55,6 +55,9 @@ unsigned int normalized_sysctl_sched_latency = 6000000ULL;
 unsigned int sysctl_sched_sync_hint_enable = 1;
 unsigned int sysctl_sched_cstate_aware = 1;
 
+bool st_cpu_bias = false;
+EXPORT_SYMBOL(st_cpu_bias);
+
 #ifdef CONFIG_SCHED_WALT
 unsigned int sysctl_sched_use_walt_cpu_util = 1;
 unsigned int sysctl_sched_use_walt_task_util = 1;
@@ -6453,7 +6456,7 @@ static int start_cpu(bool boosted)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 
-	return boosted ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
+	return (boosted && st_cpu_bias) ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
 }
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
