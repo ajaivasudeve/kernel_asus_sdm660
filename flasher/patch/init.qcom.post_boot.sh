@@ -2282,7 +2282,7 @@ case "$target" in
             # cpuset settings
             echo 0-3 > /dev/cpuset/background/cpus
             echo 0-3 > /dev/cpuset/system-background/cpus
-            echo 0-3 > /dev/cpuset/foreground/cpus
+            echo "0-3,6-7" > /dev/cpuset/foreground/cpus
             echo 0-7 > /dev/cpuset/restricted/cpus
             echo 0-7 > /dev/cpuset/top-app/cpus
             
@@ -2291,7 +2291,7 @@ case "$target" in
             echo 0 > /dev/stune/schedtune.prefer_idle
             echo 1 > /dev/stune/top-app/schedtune.boost
             echo 1 > /dev/stune/top-app/schedtune.prefer_idle
-            echo 0 > /dev/stune/foreground/schedtune.boost
+            echo 1 > /dev/stune/foreground/schedtune.boost
             echo 1 > /dev/stune/foreground/schedtune.prefer_idle
             echo 0 > /dev/stune/background/schedtune.boost
             echo 0 > /dev/stune/background/schedtune.prefer_idle
