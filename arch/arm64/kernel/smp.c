@@ -125,6 +125,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 		}
 	} else {
 		pr_err("CPU%u: failed to boot: %d\n", cpu, ret);
+		return ret;
 	}
 
 #ifdef CONFIG_THREAD_INFO_IN_TASK
@@ -197,7 +198,7 @@ asmlinkage notrace void secondary_start_kernel(void)
 	 * the CPU migration code to notice that the CPU is online
 	 * before we continue.
 	 */
-	pr_debug("CPU%u: Booted secondary processor [%08x]\n",
+	pr_info("CPU%u: Booted secondary processor [%08x]\n",
 					 cpu, read_cpuid_id());
 	set_cpu_online(cpu, true);
 	complete(&cpu_running);
