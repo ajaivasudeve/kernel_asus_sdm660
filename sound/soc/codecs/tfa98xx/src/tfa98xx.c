@@ -2413,7 +2413,7 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 
 		if (tfa98xx_sync_count < tfa98xx_device_count)
 			tfa98xx_sync_count++;
-			sync = false;	
+		sync = false;	
 
 		do_sync = (tfa98xx_sync_count >= tfa98xx_device_count);
 		mutex_unlock(&tfa98xx_mutex);
