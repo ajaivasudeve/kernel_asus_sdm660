@@ -49,6 +49,7 @@
 #include <sync.h>
 #include <sw_sync.h>
 #include <linux/cpu_boost.h>
+#include <linux/devfreq_boost.h>
 
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
@@ -1692,6 +1693,7 @@ static int mdss_fb_pm_resume(struct device *dev)
 
 	if (mfd->index == 0 && !mfd->early_unblank_work_queued) {
 		input_boost_max_kick(1000);
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);		
 		queue_work(wq, &mfd->early_unblank_work);
 		mfd->early_unblank_work_queued = true;
 	}
@@ -5108,6 +5110,7 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case MSMFB_ATOMIC_COMMIT:
 		mdss_boost_kick();
+		devfreq_mdss_boost_kick(DEVFREQ_MSM_CPUBW);		
 		ret = mdss_fb_atomic_commit_ioctl(info, argp, file);
 		break;
 
