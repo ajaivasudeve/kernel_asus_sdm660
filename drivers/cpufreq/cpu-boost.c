@@ -23,91 +23,25 @@
 #include <linux/input.h>
 #include <linux/time.h>
 
+#define IB_FREQ_MIN 1113600
+#define IB_FREQ_MAX 1113600
+#define IB_DURATION 150
+#define MDSS_TIMEOUT 5000
+
 struct cpu_sync {
 	int cpu;
 	unsigned int input_boost_min;
-	unsigned int input_boost_freq;
 };
 
 extern bool st_cpu_bias;
 
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
 static struct workqueue_struct *cpu_boost_wq;
-
 static struct work_struct input_boost_work;
-static bool max_boost_active = false;
-
-static unsigned int input_boost_enabled = 1;
-module_param(input_boost_enabled, uint, 0644);
-static unsigned int max_boost_enabled = 1;
-module_param(max_boost_enabled, uint, 0644);
-static unsigned int mdss_boost_enabled = 1;
-module_param(mdss_boost_enabled, uint, 0644);
-static unsigned int input_boost_ms = 40;
-module_param(input_boost_ms, uint, 0644);
-static unsigned int mdss_timeout = 5000;
-module_param(mdss_timeout, uint, 0644);
-
 static struct delayed_work input_boost_rem;
+
+static bool max_boost_active = false;
 unsigned long last_input_time;
-
-static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
-{
-	int i, ntokens = 0;
-	unsigned int val, cpu;
-	const char *cp = buf;
-	
-	while ((cp = strpbrk(cp + 1, " :")))
-		ntokens++;
-
-	/* single number: apply to all CPUs */
-	if (!ntokens) {
-		if (sscanf(buf, "%u\n", &val) != 1)
-			return -EINVAL;
-		for_each_possible_cpu(i)
-			per_cpu(sync_info, i).input_boost_freq = val;
-		goto out;
-	}
-
-	/* CPU:value pair */
-	if (!(ntokens % 2))
-		return -EINVAL;
-
-	cp = buf;
-	for (i = 0; i < ntokens; i += 2) {
-		if (sscanf(cp, "%u:%u", &cpu, &val) != 2)
-			return -EINVAL;
-		if (cpu > num_possible_cpus())
-			return -EINVAL;
-
-		per_cpu(sync_info, cpu).input_boost_freq = val;
-		cp = strchr(cp, ' ');
-		cp++;
-	}
-
-out:
-	return 0;
-}
-
-static int get_input_boost_freq(char *buf, const struct kernel_param *kp)
-{
-	int cnt = 0, cpu;
-	struct cpu_sync *s;
-
-	for_each_possible_cpu(cpu) {
-		s = &per_cpu(sync_info, cpu);
-		cnt += snprintf(buf + cnt, PAGE_SIZE - cnt,
-				"%d:%u ", cpu, s->input_boost_freq);
-	}
-	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
-	return cnt;
-}
-
-static const struct kernel_param_ops param_ops_input_boost_freq = {
-	.set = set_input_boost_freq,
-	.get = get_input_boost_freq,
-};
-module_param_cb(input_boost_freq, &param_ops_input_boost_freq, NULL, 0644);
 
 /*
  * The CPUFREQ_ADJUST notifier is used to override the current policy min to
@@ -194,7 +128,7 @@ static void do_input_boost(struct work_struct *work)
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
 
-	if (max_boost_active || input_boost_ms < 1) {
+	if (max_boost_active) {
 		return;
 	}
 
@@ -204,20 +138,24 @@ static void do_input_boost(struct work_struct *work)
 	pr_debug("Setting input boost min for all CPUs\n");
 	for_each_possible_cpu(i) {
 		i_sync_info = &per_cpu(sync_info, i);
-		i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
+
+		if (i < 4)
+			i_sync_info->input_boost_min = IB_FREQ_MIN;
+		else
+			i_sync_info->input_boost_min = IB_FREQ_MAX;
 	}
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
 
 	queue_delayed_work(system_power_efficient_wq, &input_boost_rem,
-					msecs_to_jiffies(input_boost_ms));
+					msecs_to_jiffies(IB_DURATION));
 }
 
 void mdss_boost_kick(void)
 {
-	if (mdss_boost_enabled < 1 || work_pending(&input_boost_work)
-				|| time_after(jiffies, last_input_time + msecs_to_jiffies(mdss_timeout))) {
+	if (work_pending(&input_boost_work)
+				|| time_after(jiffies, last_input_time + msecs_to_jiffies(MDSS_TIMEOUT))) {
 		return;
 	}
 
@@ -248,10 +186,6 @@ static void do_input_boost_max(unsigned int duration_ms)
 
 void input_boost_max_kick(unsigned int duration_ms) 
 {
-	if (max_boost_enabled < 1) {
-		return;
-	}
-	
 	if (!st_cpu_bias)
 		st_cpu_bias = true;
 
@@ -262,9 +196,6 @@ static void cpuboost_input_event(struct input_handle *handle,
 		unsigned int type, unsigned int code, int value)
 {
 	last_input_time = jiffies;
-	
-	if (input_boost_enabled < 1)
-		return;
 
 	if (work_pending(&input_boost_work))
 		return;
