@@ -1143,7 +1143,7 @@ static struct attribute_group synaptics_gesture_control_group = {
 		.attrs = synaptics_gesture_control_attrs,
 };
 
-int create_synaptics_gesture_control ()
+int create_synaptics_gesture_control (void)
 {
 	int ret;
 

@@ -866,7 +866,7 @@ static struct attribute_group nvt_gesture_control_group = {
 		.attrs = nvt_gesture_control_attrs,
 };
 
-int create_nvt_gesture_control ()
+int create_nvt_gesture_control (void)
 {
 	int ret = 0;
 
