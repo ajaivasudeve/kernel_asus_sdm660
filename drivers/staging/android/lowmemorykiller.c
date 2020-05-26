@@ -73,14 +73,9 @@ static short lowmem_adj[6] = {
 	6,
 	12,
 };
-static int lowmem_adj_size = 4;
-static int lowmem_minfree[6] = {
-	3 * 512,	/* 6MB */
-	2 * 1024,	/* 8MB */
-	4 * 1024,	/* 16MB */
-	16 * 1024,	/* 64MB */
-};
-static int lowmem_minfree_size = 4;
+static int lowmem_adj_size = 6;
+static int lowmem_minfree[6] = {7016, 14032, 21048, 28064, 35080, 42096};
+static int lowmem_minfree_size = 6;
 static int lmk_fast_run = 1;
 
 static unsigned long lowmem_deathpending_timeout;
@@ -240,9 +235,8 @@ module_param_named(adj_max_shift, adj_max_shift, short,
                    S_IRUGO | S_IWUSR);
 
 /* User knob to enable/disable adaptive lmk feature */
-static int enable_adaptive_lmk;
-module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int,
-		   S_IRUGO | S_IWUSR);
+static int enable_adaptive_lmk = 0;
+module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int, 0444);
 
 /*
  * This parameter controls the behaviour of LMK when vmpressure is in
@@ -251,9 +245,9 @@ module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int,
  * 90-94. Usually this is a pseudo minfree value, higher than the
  * highest configured value in minfree array.
  */
-static int vmpressure_file_min;
+static int vmpressure_file_min = 42096;
 module_param_named(vmpressure_file_min, vmpressure_file_min, int,
-		   S_IRUGO | S_IWUSR);
+		   0444);
 
 enum {
 	VMPRESSURE_NO_ADJUST = 0,
@@ -843,7 +837,7 @@ module_param_array_named(adj, lowmem_adj, short, &lowmem_adj_size,
 			 S_IRUGO | S_IWUSR);
 #endif
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
-			 S_IRUGO | S_IWUSR);
-module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
+			 0444);
+module_param_named(debug_level, lowmem_debug_level, uint, 0444);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
 
