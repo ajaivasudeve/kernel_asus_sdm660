@@ -13,7 +13,7 @@
 
 /* Debugging macro's. */
 #ifndef DEBUG
-#define DEBUG
+// #define DEBUG
 #endif
 
 #ifndef ASSERT
